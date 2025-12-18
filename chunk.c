@@ -1,6 +1,7 @@
 #include <stdlib.h>
-#include "chunk.c"
-#include "memory.c"
+#include "chunk.h"
+#include "memory.h"
+#include "value.h"
 
 //Initialize the chunk to be completely empty
 void initChunk(Chunk* chunk){
@@ -21,16 +22,16 @@ void writeChunk(Chunk*chunk, uint8_t byte){
         chunk->capacity = GROW_CAPACITY(oldCapacity);
 
         //Pass the opld memory block
-        chunk->code = GROW_ARRAY(uint*_t, chunk->code, oldCapacity, chunk->capacity);
+        chunk->code = GROW_ARRAY(uint8_t, chunk->code, oldCapacity, chunk->capacity);
     }
 
     //Write the byte into the slot
-    chunk->code[chunk->code] = byte;
+    chunk->code[chunk->count] = byte;
     chunk->count++;
 }
 
 void freeChunk(Chunk* chunk){
-    FREE_ARRAY(uint8_t, chubk->code, chunk->capacity);
+    FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
     freeValueArray(&chunk->constants);
     initChunk(chunk);
 }

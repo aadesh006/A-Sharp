@@ -1,5 +1,5 @@
-#ifndef clox_common_h
-#define clox_common_h
+#ifndef clox_memory_h
+#define clox_memory_h
 
 #include "common.h"
 
@@ -13,9 +13,9 @@
         sizeof(type)*(newCount))
 
 //The Delete Command
-#define FREE_ARRAY(type, pointer, oldCOunt) \
+#define FREE_ARRAY(type, pointer, oldCount) \
     reallocate(pointer, sizeof(type)*(oldCount),0)
 
 //Function
-void* reallocate(void*pointer, size_t oldsize, size_t newSize);
+void* reallocate(void*pointer, size_t oldSize, size_t newSize);
 #endif
