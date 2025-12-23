@@ -4,12 +4,13 @@
 #include "common.h"
 #include "compiler.h"
 #include "scanner.h"
+#include "value.h"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
 #endif
 
-// --- 1. PARSER STATE ---
+//PARSER STATE
 
 typedef struct {
   Token current;
@@ -47,7 +48,7 @@ static Chunk* currentChunk() {
   return compilingChunk;
 }
 
-// --- 2. ERROR HANDLING ---
+//ERROR HANDLING
 
 static void errorAt(Token* token, const char* message) {
   if (parser.panicMode) return;
@@ -74,7 +75,7 @@ static void errorAtCurrent(const char* message) {
   errorAt(&parser.current, message);
 }
 
-// --- 3. HELPER FUNCTIONS ---
+//HELPER FUNCTIONS
 
 static void advance() {
   parser.previous = parser.current;
@@ -114,16 +115,16 @@ static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, (uint8_t)constant);
 }
 
-// --- 4. FORWARD DECLARATIONS ---
+//FORWARD DECLARATIONS
 static void expression();
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
-// --- 5. PARSING FUNCTIONS ---
+//PARSING FUNCTIONS
 
 static void number() {
   double value = strtod(parser.previous.start, NULL);
-  emitConstant(value);
+  emitConstant(NUMBER_VAL(value));
 }
 
 static void grouping() {
@@ -161,7 +162,7 @@ static void binary() {
   }
 }
 
-// --- 6. PRATT PARSING ENGINE ---
+//PRATT PARSING ENGINE
 
 static void parsePrecedence(Precedence precedence) {
   advance();
@@ -185,7 +186,7 @@ static void expression() {
   parsePrecedence(PREC_ASSIGNMENT);
 }
 
-// --- 7. RULES TABLE ---
+//RULES TABLE
 
 ParseRule rules[] = {
   [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
@@ -208,7 +209,7 @@ static ParseRule* getRule(TokenType type) {
   return &rules[type];
 }
 
-// --- 8. PUBLIC COMPILE FUNCTION ---
+//PUBLIC COMPILE FUNCTION
 
 bool compile(const char* source, Chunk* chunk) {
   initScanner(source);

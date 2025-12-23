@@ -25,5 +25,18 @@ void freeValueArray(ValueArray* array) {
 }
 
 void printValue(Value value) {
-  printf("%g", value); // %g prints doubles cleanly (omits trailing zeros)
+  //printf("%g", value); // %g prints doubles cleanly (omits trailing zeros)
+  switch (value.type){
+    case VAL_BOOL:
+    printf(AS_BOOL(value) ? "true" : "false");
+    break;
+
+    case VAL_NIL:
+    printf("nil");
+    break;
+
+    case VAL_NUMBER:
+    printf("%g", AS_NUMBER(value));
+    break;
+  }
 }

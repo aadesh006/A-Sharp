@@ -18,6 +18,10 @@ void push(Value value){
     vm.stackTop++; //Move the pointer up
 }//Not checking for overflow yet!
 
+Value peek(int distance) {
+  return vm.stackTop[-1 - distance];
+}
+
 Value pop(){
     vm.stackTop--;
     return *vm.stackTop;
@@ -32,10 +36,14 @@ static InterpretResult run(){
 
     //macro: BINARY_OP
     #define BINARY_OP(op) \
-        do{ \
-            double b = pop(); \
-            double a = pop(); \
-            push(a op b); \
+        do { \
+          if(!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))){ \
+            /*runtime error*/ \
+            return INTERPRET_RUNTIME_ERROR; \
+          } \
+          double b = AS_NUMBER(pop()); \
+          double a = AS_NUMBER(pop()); \
+          push (NUMBER_VAL(a op b)); \
         }while(false)
 
     for(;;){
@@ -65,7 +73,10 @@ static InterpretResult run(){
       case OP_DIVIDE:   BINARY_OP(/); break;
       
       case OP_NEGATE:   
-        push(-pop()); // Pop value, flip sign, push back
+        if (!IS_NUMBER(peek(0))){
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        push(NUMBER_VAL(-AS_NUMBER(pop())));
         break;
 
       case OP_RETURN: {
