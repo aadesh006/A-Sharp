@@ -132,6 +132,12 @@ static void grouping() {
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
+static void string() {
+  // +1 and -2 to trim the surrounding quotes ""
+  emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, 
+                                  parser.previous.length - 2)));
+}
+
 static void binary() {
   TokenType operatorType = parser.previous.type;
   ParseRule* rule = getRule(operatorType);
@@ -150,6 +156,7 @@ static void binary() {
     case TOKEN_PLUS:          emitByte(OP_ADD); break;
   }
 }
+
 
 //PRATT PARSING ENGINE
 
@@ -207,6 +214,7 @@ ParseRule rules[] = {
   [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
   [TOKEN_COMMA]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_DOT]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
   [TOKEN_MINUS]         = {unary,    binary, PREC_TERM},
   [TOKEN_PLUS]          = {NULL,     binary, PREC_TERM},
   [TOKEN_SEMICOLON]     = {NULL,     NULL,   PREC_NONE},
