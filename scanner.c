@@ -128,6 +128,18 @@ static Token identifier() {
   return makeToken(identifierType());
 }
 
+static Token string(){
+    while (peek() != '"' && !isAtEnd()){
+        if (peek()=='\n') scanner.line++;
+        advance();
+    }
+
+    if (isAtEnd()) return errorToken("Unterminated String.");
+
+    advance();
+    return makeToken(TOKEN_STRING);
+}
+
 Token scanToken(){
     skipWhitespace();
     scanner.start = scanner.current;
@@ -158,6 +170,8 @@ Token scanToken(){
         case '+': return makeToken(TOKEN_PLUS);
         case '/': return makeToken(TOKEN_SLASH);
         case '*': return makeToken(TOKEN_STAR);
+
+        case '"': return string();
 
         // Two-character operators
         case '!':
