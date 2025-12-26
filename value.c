@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <string.h>
+
+#include "object.h" 
 #include "memory.h"
 #include "value.h"
 
@@ -12,7 +15,7 @@ void writeValueArray(ValueArray* array, Value value) {
   if (array->capacity < array->count + 1) {
     int oldCapacity = array->capacity;
     array->capacity = GROW_CAPACITY(oldCapacity);
-    array->values = GROW_ARRAY(Value, array->values,oldCapacity, array->capacity);
+    array->values = GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
   }
 
   array->values[array->count] = value;
@@ -25,18 +28,18 @@ void freeValueArray(ValueArray* array) {
 }
 
 void printValue(Value value) {
-  //printf("%g", value); // %g prints doubles cleanly (omits trailing zeros)
-  switch (value.type){
+  switch (value.type) {
     case VAL_BOOL:
-    printf(AS_BOOL(value) ? "true" : "false");
-    break;
-
+      printf(AS_BOOL(value) ? "true" : "false");
+      break;
     case VAL_NIL:
-    printf("nil");
-    break;
-
+      printf("nil");
+      break;
     case VAL_NUMBER:
-    printf("%g", AS_NUMBER(value));
-    break;
+      printf("%g", AS_NUMBER(value));
+      break;
+    case VAL_OBJ:
+      printObject(value);
+      break;
   }
 }
