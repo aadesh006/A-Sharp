@@ -7,13 +7,14 @@
 //Starting with a fixed-size stack
 #define STACK_MAX 256
 
-typedef struct{
-    Chunk* chunk;
-    uint8_t* ip; //Ponits to the Next instruction
-
-    Value stack[STACK_MAX];
-    Value* stackTop; //pointer to the empty slot just above the top item
-}VM;
+typedef struct {
+  Chunk* chunk;
+  uint8_t* ip;
+  Value stack[STACK_MAX];
+  Value* stackTop;
+  
+  Obj* objects;
+} VM;
 
 typedef enum{
     INTERPRET_OK,
@@ -24,9 +25,9 @@ typedef enum{
 void initVM();
 void freeVM();
 InterpretResult interpret(Chunk* chunk);
-
 void push(Value value);
 Value pop();
-Value peek(int distance);
+
+extern VM vm; 
 
 #endif
