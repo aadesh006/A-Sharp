@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Standard GNU Readline headers
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -43,15 +44,23 @@ static char* readFile(const char* path) {
 
 //FILE EXECUTION
 static void runFile(const char* path) {
+  //Enforce the .as extension
+  const char* ext = strrchr(path, '.');
+
+  // If there is no dot, or the extension isn't ".as", throw an error
+  if (!ext || strcmp(ext, ".as") != 0) {
+      fprintf(stderr, "Error: Source file must end with .as\n");
+      exit(64);
+  }
+
   char* source = readFile(path);
   
   Chunk chunk;
   initChunk(&chunk);
 
   if (!compile(source, &chunk)) {
-    // Compile error
     free(source);
-    freeChunk(&chunk); // Clean up even on error
+    freeChunk(&chunk); 
     exit(65);
   }
 
@@ -67,8 +76,8 @@ static void runFile(const char* path) {
 //REPL
 static void repl() {
   char* line;
+  printf("Welcome to the AS Language REPL (v0.1)\n");
   
-  // Using GNU Readline for history and arrow keys
   while ((line = readline("> ")) != NULL) {
     if (strlen(line) == 0) {
       free(line);
@@ -98,7 +107,8 @@ int main(int argc, const char* argv[]) {
   } else if (argc == 2) {
     runFile(argv[1]);
   } else {
-    fprintf(stderr, "Usage: clox [path]\n");
+    // Updated usage message
+    fprintf(stderr, "Usage: clox [script.as]\n");
     exit(64);
   }
 
