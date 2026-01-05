@@ -92,7 +92,6 @@ Run the REPL:
 Execute a source file (supports `.as` extensions):
 
 ```bash
-./clox path/to/script.lox
 ./clox path/to/script.as
 ```
 
