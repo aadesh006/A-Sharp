@@ -95,8 +95,12 @@ Run the REPL:
 Execute a source file (supports `.as` extensions):
 
 ```bash
+<<<<<<< HEAD
 ./asharp path/to/script.lox
 ./asharp path/to/script.as
+=======
+./clox path/to/script.as
+>>>>>>> ba4b6500c4b3a82220aaaf7f2577cc76709c0109
 ```
 
 Example snippets to try in the REPL:
