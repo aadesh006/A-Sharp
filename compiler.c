@@ -451,7 +451,25 @@ static void emitLoop(int loopStart) {
   emitByte(offset & 0xff);
 }
 
-static void whileStatement(){
+static void whileStatement() {
+  int loopStart = currentChunk()->count; //Mark the start
+  
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
+  expression();
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+  int exitJump = emitJump(OP_JUMP_IF_FALSE); //Jump out if false
+  emitByte(OP_POP);
+  
+  statement(); //Compile body
+
+  emitLoop(loopStart);
+
+  patchJump(exitJump);
+  emitByte(OP_POP);
+}
+
+static void forStatement(){
   
 }
 
@@ -464,8 +482,12 @@ static void statement() {
     ifStatement();
   }
 
+  else if (match(TOKEN_FOR)){
+    forStatement();
+  }
+
   else if (match(TOKEN_WHILE)){
-    whileStatment();
+    whileStatement();
   }
 
   else if (match(TOKEN_LEFT_BRACE)) {
