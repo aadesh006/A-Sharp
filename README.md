@@ -29,7 +29,8 @@ A bytecode virtual machine and interpreter for the own programming language, wri
 ---
 
 ## Changelog
-- 2026-01-07 — **Added support for `if/else` statements** in the compiler and VM; added an example and tests (`test.as`).
+- 07-01-2026 — **Added support for `if/else` statements** in the compiler and VM.
+- 08-01-2026 — **Addes support for while and for loop statements** in the compiler.
 
 ## Repository Structure
 Key files and directories (top-level):
@@ -95,12 +96,7 @@ Run the REPL:
 Execute a source file (supports `.as` extensions):
 
 ```bash
-<<<<<<< HEAD
-./asharp path/to/script.lox
 ./asharp path/to/script.as
-=======
-./clox path/to/script.as
->>>>>>> ba4b6500c4b3a82220aaaf7f2577cc76709c0109
 ```
 
 Example snippets to try in the REPL:

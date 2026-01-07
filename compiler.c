@@ -469,6 +469,10 @@ static void whileStatement() {
   emitByte(OP_POP);
 }
 
+static void forStatement(){
+
+}
+
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
@@ -476,6 +480,10 @@ static void statement() {
 
   else if (match(TOKEN_IF)) {
     ifStatement();
+  }
+
+  else if (match(TOKEN_FOR)){
+    forStatement();
   }
 
   else if (match(TOKEN_WHILE)){

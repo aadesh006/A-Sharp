@@ -2,23 +2,20 @@ CC = gcc
 CFLAGS = -g -Wall
 LIBS = -lreadline
 
-# The directory where object files will go
 BUILD_DIR = build
 
 SOURCES = $(wildcard *.c)
-# This changes 'main.c' -> 'build/main.o'
 OBJECTS = $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 TARGET = asharp
 
 all: $(TARGET)
 
-# Link: Now looks for objects inside the build folder
+# looks for objects inside the build folder
 $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
-# Compile: Puts .o files into the build folder
-# The '| $(BUILD_DIR)' part ensures the folder exists first
+# Puts .o files into the build folder
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
