@@ -9,7 +9,7 @@ SOURCES = $(wildcard *.c)
 # This changes 'main.c' -> 'build/main.o'
 OBJECTS = $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 
-TARGET = clox
+TARGET = asharp
 
 all: $(TARGET)
 

@@ -28,6 +28,9 @@ A bytecode virtual machine and interpreter for the own programming language, wri
 
 ---
 
+## Changelog
+- 2026-01-07 — **Added support for `if/else` statements** in the compiler and VM; added an example and tests (`test.as`).
+
 ## Repository Structure
 Key files and directories (top-level):
 
@@ -74,7 +77,7 @@ From the project root run:
 make
 ```
 
-This builds the `clox` executable (or similar binary in the project root). To do a clean rebuild:
+This builds the `asharp` executable (or similar binary in the project root). To do a clean rebuild:
 
 ```bash
 make clean && make
@@ -86,14 +89,14 @@ make clean && make
 Run the REPL:
 
 ```bash
-./clox
+./asharp
 ```
 
 Execute a source file (supports `.as` extensions):
 
 ```bash
-./clox path/to/script.lox
-./clox path/to/script.as
+./asharp path/to/script.lox
+./asharp path/to/script.as
 ```
 
 Example snippets to try in the REPL:
@@ -113,7 +116,7 @@ if (a > 5) {
 }
 ```
 
-Note: the interpreter reads files with the `.as` extension; try `./clox test.as`.
+Note: the interpreter reads files with the `.as` extension; try `./asharp test.as`.
 
 ---
 
