@@ -470,7 +470,7 @@ static void whileStatement() {
 }
 
 static void forStatement(){
-  
+
 }
 
 static void statement() {
