@@ -30,7 +30,8 @@ A bytecode virtual machine and interpreter for the own programming language, wri
 
 ## Changelog
 - 07-01-2026 — **Added support for `if/else` statements** in the compiler and VM.
-- 08-01-2026 — **Addes support for while and for loop statements** in the compiler.
+- 08-01-2026 — **Added support for `while` statements** in the compiler.
+- 10-01-2026 — **Implemented `for` loop statement**
 
 ## Repository Structure
 Key files and directories (top-level):
