@@ -480,6 +480,15 @@ static void forStatement(){
     varDeclaration();
   } else {
     expressionStatement();
+
+  //Condition
+  int exitJump = -1;
+  if (!match(TOKEN_SEMICOLON)) {
+    expression();
+
+    // Jump out of the loop if the condition is false
+    exitJump = emitJump(OP_JUMP_IF_FALSE);
+  }
   }
 
   int loopStart = currentChunk()->count;
