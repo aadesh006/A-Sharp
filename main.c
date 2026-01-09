@@ -107,8 +107,8 @@ int main(int argc, const char* argv[]) {
   } else if (argc == 2) {
     runFile(argv[1]);
   } else {
-    // Updated usage message
-    fprintf(stderr, "Usage: clox [script.as]\n");
+    // Updated usage message - 09/01/2026
+    fprintf(stderr, "Usage: asharp [script.as]\n");
     exit(64);
   }
 
