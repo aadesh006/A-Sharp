@@ -2,7 +2,7 @@
 
 A bytecode virtual machine and interpreter for the own programming language, written in C. This implementation is largely based on the Part III of the book **Crafting Interpreters** by Robert Nystrom.
 
-**Project status:** Work in progress: core scanner, compiler, debugger and VM are implemented and can execute simple programs.
+**Project status:** Work in progress: scanner, compiler, debugger and VM are implemented and can execute programs that include `for` and `while` loop, `if/else` statements, Local and Global Scope, 'print' statement.
 
 ---
 
