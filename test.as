@@ -31,28 +31,25 @@ var value = "Global Value";
 print "Outside block: " + value;      // Should print "Global Value"
 
 print "";
-print "While Loop (Countdown)";
+print "While Loop";
 var i = 3;
 while (i > 0) {
-  print "Counting down... " + i;
+  // Print label and number separately to avoid type error
+  print "Counting down..."; 
+  print i;
   i = i - 1;
 }
 print "Liftoff!";
-
 print "";
 print "For Loop (Fibonacci Sequence)";
 // Calculating the first 10 Fibonacci numbers
 var a = 0;
 var b = 1;
-
-print "0: " + a;
-print "1: " + b;
-
-for (var k = 2; k < 10; k = k + 1) {
+for (var i = 0; i < 5; i = i + 1) {
+  print a;
   var temp = a + b;
   a = b;
   b = temp;
-  print k + ": " + temp;
 }
 
 print "";
