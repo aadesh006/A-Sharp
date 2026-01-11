@@ -2,7 +2,7 @@
 
 A bytecode virtual machine and interpreter for the own programming language, written in C. This implementation is largely based on the Part III of the book **Crafting Interpreters** by Robert Nystrom.
 
-**Project status:** Work in progress: core scanner, compiler, debugger and VM are implemented and can execute simple programs.
+**Project status:** Work in progress: scanner, compiler, debugger and VM are implemented and can execute programs that include `for` and `while` loop, `if/else` statements, Local and Global Scope, 'print' statement.
 
 ---
 
@@ -32,6 +32,7 @@ A bytecode virtual machine and interpreter for the own programming language, wri
 - 07-01-2026 — **Added support for `if/else` statements** in the compiler and VM.
 - 08-01-2026 — **Added support for `while` statements** in the compiler.
 - 10-01-2026 — **Implemented `for` loop statement**
+- 11-01-2026 — **Created a file name `test.as` for some sample codes that lang supports so far**
 
 ## Repository Structure
 Key files and directories (top-level):
