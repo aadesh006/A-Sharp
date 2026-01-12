@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "value.h"
+#include "chunk.h"
 
 #define OBJ_TYPE(value)   (AS_OBJ(value)->type)
 #define IS_STRING(value)  isObjType(value, OBJ_STRING)
@@ -10,7 +11,10 @@
 #define AS_STRING(value)  ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((ObjString*)AS_OBJ(value))->chars)
 
+//typedef struct sChunk Chunk; 
+
 typedef enum {
+  OBJ_FUNCTION,
   OBJ_STRING,
 } ObjType;
 
@@ -18,6 +22,18 @@ struct Obj {
   ObjType type;
   struct Obj* next;
 };
+
+
+
+typedef struct {
+  Obj obj;
+  int arity;
+  int upvalueCount; //Remaining to implement
+  Chunk chunk;
+  ObjString* name;
+} ObjFunction;
+
+ObjFunction* newFunction();
 
 struct ObjString {
   Obj obj;
@@ -30,7 +46,7 @@ static inline bool isObjType(Value value, ObjType type) {
   return IS_OBJ(value) && AS_OBJ(value)->type == type;
 }
 
-// --- THIS IS THE CRITICAL LINE ---
+//Critical line
 ObjString* copyString(const char* chars, int length);
 void printObject(Value value);
 
