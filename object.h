@@ -34,6 +34,8 @@ typedef struct {
 } ObjFunction;
 
 ObjFunction* newFunction();
+#define AS_FUNCTION(value)   ((ObjFunction*)AS_OBJ(value))
+#define IS_FUNCTION(value)   isObjType(value, OBJ_FUNCTION)
 
 struct ObjString {
   Obj obj;
