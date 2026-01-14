@@ -43,59 +43,36 @@ static char* readFile(const char* path) {
 }
 
 //FILE EXECUTION
-static void runFile(const char* path) {
-  //Enforce the .as extension
-  const char* ext = strrchr(path, '.');
+static void repl() {
+  char line[1024];
+  for (;;) {
+    printf("> ");
 
-  // If there is no dot, or the extension isn't ".as", throw an error
-  if (!ext || strcmp(ext, ".as") != 0) {
-      fprintf(stderr, "Error: Source file must end with .as\n");
-      exit(64);
+    if (!fgets(line, sizeof(line), stdin)) {
+      printf("\n");
+      break;
+    }
+
+    // NEW LOGIC:
+    ObjFunction* function = compile(line);
+    if (function != NULL) {
+        printf("Compiled to a function object!\n");
+        // interpret(function); // Will be add this later
+    }
   }
-
-  char* source = readFile(path);
-  
-  Chunk chunk;
-  initChunk(&chunk);
-
-  if (!compile(source, &chunk)) {
-    free(source);
-    freeChunk(&chunk); 
-    exit(65);
-  }
-
-  InterpretResult result = interpret(&chunk);
-  
-  freeChunk(&chunk);
-  free(source);
-
-  if (result == INTERPRET_COMPILE_ERROR) exit(65);
-  if (result == INTERPRET_RUNTIME_ERROR) exit(70);
 }
 
-//REPL
-static void repl() {
-  char* line;
-  printf("Welcome to the AS Language REPL (v0.1)\n");
+static void runFile(const char* path) {
+  char* source = readFile(path);
   
-  while ((line = readline("> ")) != NULL) {
-    if (strlen(line) == 0) {
-      free(line);
-      continue;
-    }
+  // NEW LOGIC:
+  ObjFunction* function = compile(source);
+  if (function == NULL) exit(65); // Compile error
 
-    add_history(line);
+  printf("Compiled to a function object!\n");
+  // interpret(function); // We will add this later!
 
-    Chunk chunk;
-    initChunk(&chunk);
-
-    if (compile(line, &chunk)) {
-      interpret(&chunk);
-    }
-
-    freeChunk(&chunk);
-    free(line); 
-  }
+  free(source);
 }
 
 //MAIN ENTRY POINT
