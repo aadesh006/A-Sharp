@@ -109,7 +109,23 @@ static void emitByte(uint8_t byte) {
   writeChunk(currentChunk(), byte, parser.previous.line);
 }
 static void emitBytes(uint8_t byte1, uint8_t byte2) { emitByte(byte1); emitByte(byte2); }
+
 static void emitReturn() { emitByte(OP_RETURN); }
+
+static ObjFunction* endCompiler() {
+  emitReturn(); //Calling helper here
+  
+  ObjFunction* function = current->function;
+
+#ifdef DEBUG_PRINT_CODE
+  if (!parser.hadError) {
+    disassembleChunk(currentChunk(), function->name != NULL
+        ? function->name->chars : "<script>");
+  }
+#endif
+
+  return function;
+}
 
 static uint8_t makeConstant(Value value) {
   int constant = addConstant(currentChunk(), value);
