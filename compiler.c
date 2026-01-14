@@ -30,11 +30,15 @@ typedef struct {
   int depth;
 }Local;
 
-typedef struct{
+typedef struct Compiler {
+  struct Compiler* enclosing;
+  ObjFunction* function;
+  ObjType type;
+
   Local locals[UINT8_COUNT];
   int localCount;
   int scopeDepth;
-}Compiler;
+} Compiler;
 
 typedef void (*ParseFn)();
 
@@ -46,7 +50,7 @@ typedef struct {
 
 Parser parser;
 Compiler* current = NULL;
-Chunk* compilingChunk;
+
 
 //FORWARD DECLARATIONS: let compiler know this fn exists
 static void expression();
@@ -55,7 +59,9 @@ static void declaration();
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
-static Chunk* currentChunk() { return compilingChunk; }
+static Chunk* currentChunk() {
+  return &current->function->chunk;
+}
 
 static void errorAt(Token* token, const char* message) {
   if (parser.panicMode) return;
@@ -547,9 +553,24 @@ static void statement() {
   else expressionStatement();
 }
 
+//Initialize the compiler
+static void initCompiler(Compiler* compiler, ObjType type) {
+  compiler->enclosing = NULL; // will be used later on
+  compiler->function = NULL;
+  compiler->type = type;
+  compiler->localCount = 0;
+  compiler->scopeDepth = 0;
+  
+  compiler->function = newFunction(); // Create the empty "Recipe Card"
+  current = compiler;
+
+  Local* local = &compiler->locals[compiler->localCount++];
+  local->depth = 0;
+  local->name.start = ""; // Internal use only
+  local->name.length = 0;
+}
 
 //Compile Entry Point
-
 bool compile(const char* source, Chunk* chunk) {
   initScanner(source);
   
