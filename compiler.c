@@ -30,10 +30,15 @@ typedef struct {
   int depth;
 }Local;
 
+typedef enum {
+  TYPE_FUNCTION,
+  TYPE_SCRIPT
+} FunctionType;
+
 typedef struct Compiler {
   struct Compiler* enclosing;
   ObjFunction* function;
-  ObjType type;
+  FunctionType type;
 
   Local locals[UINT8_COUNT];
   int localCount;
@@ -109,7 +114,23 @@ static void emitByte(uint8_t byte) {
   writeChunk(currentChunk(), byte, parser.previous.line);
 }
 static void emitBytes(uint8_t byte1, uint8_t byte2) { emitByte(byte1); emitByte(byte2); }
+
 static void emitReturn() { emitByte(OP_RETURN); }
+
+static ObjFunction* endCompiler() {
+  emitReturn(); //Calling helper here
+  
+  ObjFunction* function = current->function;
+
+#ifdef DEBUG_PRINT_CODE
+  if (!parser.hadError) {
+    disassembleChunk(currentChunk(), function->name != NULL
+        ? function->name->chars : "<script>");
+  }
+#endif
+
+  return function;
+}
 
 static uint8_t makeConstant(Value value) {
   int constant = addConstant(currentChunk(), value);
@@ -564,6 +585,11 @@ static void initCompiler(Compiler* compiler, ObjType type) {
   compiler->function = newFunction(); // Create the empty "Recipe Card"
   current = compiler;
 
+  //If we are compiling a named function, copy its name
+  if (type != TYPE_SCRIPT) {
+    compiler->function->name = copyString(parser.previous.start, parser.previous.length);
+  }
+
   Local* local = &compiler->locals[compiler->localCount++];
   local->depth = 0;
   local->name.start = ""; // Internal use only
@@ -571,17 +597,13 @@ static void initCompiler(Compiler* compiler, ObjType type) {
 }
 
 //Compile Entry Point
-bool compile(const char* source, Chunk* chunk) {
+ObjFunction* compile(const char* source) {
   initScanner(source);
   
-  // Set up the compiler state
   Compiler compiler;
-  compiler.localCount = 0;
-  compiler.scopeDepth = 0;
+  // Initialize the compiler as a "Script" (the main body of code)
+  initCompiler(&compiler, TYPE_SCRIPT);
 
-  current = &compiler;
-  
-  compilingChunk = chunk;
   parser.hadError = false;
   parser.panicMode = false;
   advance();
@@ -590,6 +612,7 @@ bool compile(const char* source, Chunk* chunk) {
     declaration();
   }
 
-  emitReturn();
-  return !parser.hadError;
+  // Using the new endCompiler() which returns the function object
+  ObjFunction* function = endCompiler();
+  return parser.hadError ? NULL : function;
 }
