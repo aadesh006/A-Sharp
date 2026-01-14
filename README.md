@@ -91,6 +91,9 @@ make clean && make
 ---
 
 ## Usage
+
+> **Important**: Current Interpreter of A-Sharp converts `test.as` file in functional object, and it will not print output on the terminal. You need to switch to `Asharp-interpreter` branch for testing `test.as`
+
 Run the REPL:
 
 ```bash
