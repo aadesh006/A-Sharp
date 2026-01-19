@@ -18,7 +18,7 @@ typedef struct {
   bool panicMode;
 } Parser;
 
-#define UINT8_COUNT (UINT8_MAX +1)
+//#define UINT8_COUNT (UINT8_MAX +1) //globally declared in common.h
 
 typedef enum {
   PREC_NONE, PREC_ASSIGNMENT, PREC_OR, PREC_AND, PREC_EQUALITY,

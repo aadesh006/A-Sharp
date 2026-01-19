@@ -5,6 +5,7 @@
 #include "value.h"
 #include "table.h"
 #include "object.h"
+#include "common.h"
 
 //Starting with a fixed-size stack
 //#define STACK_MAX 256

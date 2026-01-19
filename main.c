@@ -12,7 +12,7 @@
 #include "vm.h"
 #include "compiler.h"
 
-//FILE READING HELPER
+// FILE READING HELPER
 static char* readFile(const char* path) {
   FILE* file = fopen(path, "rb");
   if (file == NULL) {
@@ -42,9 +42,9 @@ static char* readFile(const char* path) {
   return buffer;
 }
 
-//FILE EXECUTION
+// FILE EXECUTION (Merged and Fixed)
 static void runFile(const char* path) {
-  //Enforce the .as extension
+  // Enforce the .as extension
   const char* ext = strrchr(path, '.');
 
   // If there is no dot, or the extension isn't ".as", throw an error
@@ -55,50 +55,43 @@ static void runFile(const char* path) {
 
   char* source = readFile(path);
   
-  Chunk chunk;
-  initChunk(&chunk);
-
-  if (!compile(source, &chunk)) {
+  // NEW LOGIC: Compile returns a function object
+  ObjFunction* function = compile(source);
+  if (function == NULL) {
     free(source);
-    freeChunk(&chunk); 
-    exit(65);
+    exit(65); // Compile error
   }
 
-  InterpretResult result = interpret(&chunk);
+  InterpretResult result = interpret(function);
   
-  freeChunk(&chunk);
-  free(source);
+  free(source); 
+  // Note: We don't free the function here yet because the VM 
+  // or GC will handle object cleanup later.
 
   if (result == INTERPRET_COMPILE_ERROR) exit(65);
   if (result == INTERPRET_RUNTIME_ERROR) exit(70);
 }
 
-//REPL
+// REPL
 static void repl() {
-  char* line;
-  printf("Welcome to the AS Language REPL (v0.1)\n");
-  
-  while ((line = readline("> ")) != NULL) {
-    if (strlen(line) == 0) {
-      free(line);
-      continue;
+  char line[1024];
+  for (;;) {
+    printf("> ");
+
+    if (!fgets(line, sizeof(line), stdin)) {
+      printf("\n");
+      break;
     }
 
-    add_history(line);
-
-    Chunk chunk;
-    initChunk(&chunk);
-
-    if (compile(line, &chunk)) {
-      interpret(&chunk);
+    // NEW LOGIC: Compile returns a function, then run it.
+    ObjFunction* function = compile(line);
+    if (function != NULL) {
+      interpret(function);
     }
-
-    freeChunk(&chunk);
-    free(line); 
   }
 }
 
-//MAIN ENTRY POINT
+// MAIN ENTRY POINT
 int main(int argc, const char* argv[]) {
   initVM();
 
@@ -107,7 +100,6 @@ int main(int argc, const char* argv[]) {
   } else if (argc == 2) {
     runFile(argv[1]);
   } else {
-    // Updated usage message - 09/01/2026
     fprintf(stderr, "Usage: asharp [script.as]\n");
     exit(64);
   }
