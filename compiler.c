@@ -575,7 +575,7 @@ static void statement() {
 }
 
 //Initialize the compiler
-static void initCompiler(Compiler* compiler, ObjType type) {
+static void initCompiler(Compiler* compiler, FunctionType type) {
   compiler->enclosing = NULL; // will be used later on
   compiler->function = NULL;
   compiler->type = type;

@@ -3,6 +3,8 @@
 
 #include "chunk.h"
 #include "scanner.h"
+#include "vm.h"
+#include "object.h"
 
 ObjFunction* compile(const char* source);
 

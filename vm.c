@@ -13,6 +13,7 @@ VM vm;
 
 static void resetStack() {
   vm.stackTop = vm.stack;
+  vm.frameCount = 0; //Reset frame count too
 }
 
 static void runtimeError(const char* format, ...) {
@@ -22,8 +23,11 @@ static void runtimeError(const char* format, ...) {
   va_end(args);
   fputs("\n", stderr);
 
-  size_t instruction = vm.ip - vm.chunk->code - 1;
-  int line = vm.chunk->lines[instruction];
+  // Get line number from the current frame
+  CallFrame* frame = &vm.frames[vm.frameCount - 1];
+  size_t instruction = frame->ip - frame->function->chunk.code - 1;
+  int line = frame->function->chunk.lines[instruction];
+  
   fprintf(stderr, "[line %d] in script\n", line);
   resetStack();
 }
@@ -83,20 +87,25 @@ static bool valuesEqual(Value a, Value b) {
     case VAL_BOOL:   return AS_BOOL(a) == AS_BOOL(b);
     case VAL_NIL:    return true;
     case VAL_NUMBER: return AS_NUMBER(a) == AS_NUMBER(b);
-    case VAL_OBJ:    return AS_OBJ(a) == AS_OBJ(b); // Fast pointer compare
+    case VAL_OBJ:    return AS_OBJ(a) == AS_OBJ(b);
     default:         return false;
   }
 }
 
 static InterpretResult run() {
+  // Grab the current frame info
+  CallFrame* frame = &vm.frames[vm.frameCount - 1];
+
+// Macros use 'frame->ip' now
+#define READ_BYTE() (*frame->ip++) 
+#define READ_SHORT() \
+    (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+
+#define READ_CONSTANT() \
+    (frame->function->chunk.constants.values[READ_BYTE()])
 
 #define READ_STRING() AS_STRING(READ_CONSTANT())
-#define READ_BYTE() (*vm.ip++)
-#define READ_BYTE() (*vm.ip++)
-#define READ_SHORT() \
-    (vm.ip += 2, (uint16_t)((vm.ip[-2] << 8) | vm.ip[-1]))
 
-#define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
 #define BINARY_OP(valueType, op) \
     do { \
       if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) { \
@@ -117,7 +126,9 @@ static InterpretResult run() {
       printf(" ]");
     }
     printf("\n");
-    disassembleInstruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
+    // disassemble using frame's chunk and ip
+    disassembleInstruction(&frame->function->chunk, 
+        (int)(frame->ip - frame->function->chunk.code));
 #endif
 
     uint8_t instruction = READ_BYTE();
@@ -134,63 +145,60 @@ static InterpretResult run() {
 
       case OP_GET_LOCAL: {
         uint8_t slot = READ_BYTE();
-        push(vm.stack[slot]);
+        push(frame->slots[slot]); // <--- FIX: Use frame->slots
         break;
       }
       case OP_SET_LOCAL: {
         uint8_t slot = READ_BYTE();
-        vm.stack[slot] = peek(0);
+        frame->slots[slot] = peek(0); // <--- FIX: Use frame->slots
         break;
       }
 
-    case OP_DEFINE_GLOBAL: {
-      ObjString* name = READ_STRING();
-      // Store the value from the top of the stack into the hash table
-      tableSet(&vm.globals, name, peek(0));
-      pop(); // Pop the value now that it's saved
-      break;
-    }
-
-    case OP_GET_GLOBAL: {
-      ObjString* name = READ_STRING();
-      Value value;
-      // Look up the variable name in the hash table
-      if (!tableGet(&vm.globals, name, &value)) {
-        runtimeError("Undefined variable '%s'.", name->chars);
-        return INTERPRET_RUNTIME_ERROR;
+      case OP_DEFINE_GLOBAL: {
+        ObjString* name = READ_STRING();
+        tableSet(&vm.globals, name, peek(0));
+        pop();
+        break;
       }
-      push(value); // Push the found value onto the stack
-      break;
-    }
 
-    case OP_SET_GLOBAL: {
-      ObjString* name = READ_STRING();
-      // Try to set the value. 
-      // tableSet returns 'true' if it created a NEW key (which we don't want for assignment)
-      if (tableSet(&vm.globals, name, peek(0))) {
-        // If we accidentally created a new key, delete it and error out
-        tableDelete(&vm.globals, name); 
-        runtimeError("Undefined variable '%s'.", name->chars);
-        return INTERPRET_RUNTIME_ERROR;
+      case OP_GET_GLOBAL: {
+        ObjString* name = READ_STRING();
+        Value value;
+        if (!tableGet(&vm.globals, name, &value)) {
+          runtimeError("Undefined variable '%s'.", name->chars);
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        push(value);
+        break;
       }
-      // Note: We do NOT pop(). Assignment is an expression (a = 1 returns 1).
-      break;
-    }
-      break;
 
-    //Conditional Statements
-    case OP_JUMP: {
-      uint16_t offset = READ_SHORT();
-      vm.ip += offset;
-      break;
-    }
-    case OP_JUMP_IF_FALSE: {
-      uint16_t offset = READ_SHORT();
-      if (isFalsey(peek(0))) {
-        vm.ip += offset;
+      case OP_SET_GLOBAL: {
+        ObjString* name = READ_STRING();
+        if (tableSet(&vm.globals, name, peek(0))) {
+          tableDelete(&vm.globals, name); 
+          runtimeError("Undefined variable '%s'.", name->chars);
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        break;
       }
-      break;
-    }
+
+      case OP_JUMP: {
+        uint16_t offset = READ_SHORT();
+        frame->ip += offset; // <--- FIX: Update frame->ip
+        break;
+      }
+      case OP_JUMP_IF_FALSE: {
+        uint16_t offset = READ_SHORT();
+        if (isFalsey(peek(0))) {
+          frame->ip += offset; // <--- FIX: Update frame->ip
+        }
+        break;
+      }
+      case OP_LOOP: {
+        uint16_t offset = READ_SHORT();
+        frame->ip -= offset; // <--- FIX: Update frame->ip
+        break;
+      }
 
       case OP_EQUAL: {
         Value b = pop();
@@ -232,12 +240,6 @@ static InterpretResult run() {
         break;
       }
 
-      case OP_LOOP: {
-        uint16_t offset = READ_SHORT();
-        vm.ip -= offset;
-        break;
-      }
-
       case OP_RETURN: {
         // No longer prints result automatically
         return INTERPRET_OK;
@@ -246,12 +248,20 @@ static InterpretResult run() {
   }
 
 #undef READ_BYTE
+#undef READ_SHORT
 #undef READ_CONSTANT
+#undef READ_STRING
 #undef BINARY_OP
 }
 
-InterpretResult interpret(Chunk* chunk) {
-  vm.chunk = chunk;
-  vm.ip = vm.chunk->code;
+InterpretResult interpret(ObjFunction* function) {
+  push(OBJ_VAL(function));
+  
+  // Set up the first Call Frame
+  CallFrame* frame = &vm.frames[vm.frameCount++];
+  frame->function = function;
+  frame->ip = function->chunk.code;
+  frame->slots = vm.stack;
+
   return run();
 }

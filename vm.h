@@ -4,19 +4,28 @@
 #include "chunk.h"
 #include "value.h"
 #include "table.h"
+#include "object.h"
 
 //Starting with a fixed-size stack
-#define STACK_MAX 256
+//#define STACK_MAX 256
+#define FRAMES_MAX 64
+#define STACK_MAX (FRAMES_MAX * UINT8_COUNT)
 
 typedef struct {
-  Chunk* chunk;
+  ObjFunction* function;
   uint8_t* ip;
+  Value* slots; // Pointer to the start of this frame's stack window
+} CallFrame;
+
+typedef struct {
+  CallFrame frames[FRAMES_MAX]; // The Call Stack
+  int frameCount;               // How many frames are active (depth)
+
   Value stack[STACK_MAX];
   Value* stackTop;
-  Obj* objects;
-
-  Table strings;
   Table globals;
+  Table strings;
+  Obj* objects;
 } VM;
 
 typedef enum{
@@ -27,7 +36,7 @@ typedef enum{
 
 void initVM();
 void freeVM();
-InterpretResult interpret(Chunk* chunk);
+InterpretResult interpret(ObjFunction* chunk);
 void push(Value value);
 Value pop();
 
