@@ -74,20 +74,25 @@ static void runFile(const char* path) {
 
 // REPL
 static void repl() {
-  char line[1024];
-  for (;;) {
-    printf("> ");
+  printf("============Welcome to A-Sharp v0.1============\n");
+  printf("Press Ctrl+D to quit.\n");
 
-    if (!fgets(line, sizeof(line), stdin)) {
-      printf("\n");
-      break;
+  char* line;
+  // readline returns a malloc'd string (or NULL on EOF)
+  while ((line = readline("> ")) != NULL) {
+    
+    // Add the line to history so Up-Arrow works
+    if (line[0] != '\0') {
+      add_history(line);
     }
 
-    // NEW LOGIC: Compile returns a function, then run it.
     ObjFunction* function = compile(line);
     if (function != NULL) {
       interpret(function);
     }
+
+    // readline allocates memory for every line, so we must free it
+    free(line); 
   }
 }
 
