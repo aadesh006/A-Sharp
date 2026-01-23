@@ -618,7 +618,7 @@ static void statement() {
 
 //Initialize the compiler
 static void initCompiler(Compiler* compiler, FunctionType type) {
-  compiler->enclosing = NULL; // will be used later on
+  compiler->enclosing = NULL;
   compiler->function = NULL;
   compiler->type = type;
   compiler->localCount = 0;

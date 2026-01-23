@@ -8,5 +8,4 @@
 
 ObjFunction* compile(const char* source);
 
-
 #endif
