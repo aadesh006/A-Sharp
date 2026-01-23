@@ -64,6 +64,10 @@ static void declaration();
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
+static void initCompiler(Compiler* compiler, FunctionType type);
+static void beginScope();
+static void block();
+
 static Chunk* currentChunk() {
   return &current->function->chunk;
 }
@@ -228,9 +232,47 @@ static void varDeclaration() {
   defineVariable(global);
 }
 
+static void function(FunctionType type) {
+  Compiler compiler;
+  initCompiler(&compiler, type);
+  beginScope(); 
+
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+  
+  // Compile the parameter list
+  if (!check(TOKEN_RIGHT_PAREN)) {
+    do {
+      current->function->arity++;
+      if (current->function->arity > 255) {
+        errorAtCurrent("Can't have more than 255 parameters.");
+      }
+      uint8_t constant = parseVariable("Expect parameter name.");
+      defineVariable(constant);
+    } while (match(TOKEN_COMMA));
+  }
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+  block();
+
+  // Create the function object
+  ObjFunction* function = endCompiler();
+  
+  // Emit the code to store the function in a constant
+  emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
+}
+
+static void funDeclaration() {
+  uint8_t global = parseVariable("Expect function name.");
+  markInitialized();
+  function(TYPE_FUNCTION);
+  defineVariable(global);
+}
+
 
 static void declaration() {
-  if (match(TOKEN_VAR)) {
+  if (match(TOKEN_FUN)) {
+    funDeclaration();
+  } else if (match(TOKEN_VAR)) {
     varDeclaration();
   } else {
     statement();

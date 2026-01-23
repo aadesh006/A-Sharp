@@ -20,6 +20,7 @@ return result;
 }
 
 static void freeObject(Obj* object) {
+  //Cleaning funtion and string objects
   switch (object->type) {
     case OBJ_STRING: {
       ObjString* string = (ObjString*)object;

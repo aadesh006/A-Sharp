@@ -1,152 +1,166 @@
-# VM & Interpreter in C
+# A-Sharp Programming Language
 
-A bytecode virtual machine and interpreter for the own programming language, written in C. This implementation is largely based on the Part III of the book **Crafting Interpreters** by Robert Nystrom.
+A bytecode virtual machine and interpreter for the A-Sharp programming language, written in C. This implementation follows the architecture described in Part III of **Crafting Interpreters** by Robert Nystrom.
 
-**Project status:** Work in progress: scanner, compiler, debugger and VM are implemented and can execute programs that include `for` and `while` loop, `if/else` statements, Local and Global Scope, 'print' statement.
+**Project Status:** Active development — Core features including control flow, scoping, and basic data types are fully functional.
 
 ---
 
-## Table of Contents
-- [Features](#features)
-- [Repository Structure](#repository-structure)
-- [Prerequisites](#prerequisites)
-- [Build](#build)
-- [Usage](#usage)
-- [Development notes](#development-notes)
+## Overview
+
+A-Sharp is a dynamically-typed scripting language with a stack-based bytecode VM. It features:
+
+- **Clean syntax** for variables, expressions, and control flow
+- **Lexical scoping** with local and global variables
+- **Interactive REPL** with line editing and command history
+- **Efficient bytecode execution** via a custom virtual machine
 
 ---
 
 ## Features
-- Scanning: tokenizes source code into tokens
-- Compiling: Pratt parser and bytecode generator
-- Virtual Machine: stack-based VM that executes compiled chunks
-- REPL: interactive Read-Eval-Print Loop with line editing/history
-- Basic arithmetic and expressions
-- Control flow: if/else statements (conditional execution)
-- Variables: local and global variables with lexical scoping and assignment
-- Functions (as implemented in the repo)
+
+### Implemented
+- **Lexical Analysis**: Tokenizes source code into a stream of tokens
+- **Compilation**: Pratt parser with single-pass bytecode generation
+- **Virtual Machine**: Stack-based bytecode interpreter with optimized dispatch
+- **Data Types**: Numbers, strings, booleans, and nil
+- **Variables**: Local and global variables with lexical scoping
+- **Operators**: Arithmetic (`+`, `-`, `*`, `/`), comparison (`<`, `>`, `<=`, `>=`), equality (`==`, `!=`), logical (`and`, `or`, `not`)
+- **Control Flow**: 
+  - `if`/`else` statements for conditional execution
+  - `while` loops for iteration
+  - `for` loops with C-style syntax
+- **I/O**: `print` statement for output
+- **REPL**: Interactive shell with readline support
+
+### Upcoming
+- Functions and closures
+- Classes and objects
+- Standard library
+- Module system
 
 ---
 
-## Changelog
-- 07-01-2026 — **Added support for `if/else` statements** in the compiler and VM.
-- 08-01-2026 — **Added support for `while` statements** in the compiler.
-- 10-01-2026 — **Implemented `for` loop statement**
-- 11-01-2026 — **Created a file name `test.as` for some sample codes that lang supports so far**
-- 12-01-2026 — **Updated `object.h` for supporting fn calling**
-- 14-01-2026 — **compiler now converts `test.as` file to a funtional object**
+## Quick Start
 
-## Repository Structure
-Key files and directories (top-level):
+### Prerequisites
 
-- `main.c` — program entry & CLI
-- `scanner.c`, `scanner.h` — tokenizer for source
-- `compiler.c`, `compiler.h` — parser + bytecode compiler
-- `vm.c`, `vm.h` — virtual machine executing bytecode
-- `object.c`, `object.h` — runtime objects and value handling
-- `memory.c`, `memory.h` — memory management helpers
-- `debug.c`, `debug.h` — disassembly and debugging helpers
-- `chunk.c`, `chunk.h` — bytecode chunk representation
-- `table.c`, `table.h` — hash table implementation for globals
-- `value.c`, `value.h` — value representation and utilities
-- `Makefile` — build targets
-- `build/` — build artifacts (generated)
+- C compiler (GCC or Clang)
+- GNU Make
+- Readline library (for REPL features)
 
-> Tip: See inline comments in the `.c/.h` files for details about implementation and interfaces.
-
-## Prerequisites
-- A C compiler (gcc/clang)
-- make
-- Readline development library (for REPL history/editing)
-
-On Debian/Ubuntu/WSL:
-
+**Installation on Ubuntu/Debian/WSL:**
 ```bash
 sudo apt update
 sudo apt install build-essential libreadline-dev
 ```
 
-On macOS (with Homebrew):
-
+**Installation on macOS:**
 ```bash
 brew install readline
-# you may need to set CPPFLAGS/LDFLAGS so the compiler finds readline headers and libs
+# Note: You may need to set CPPFLAGS and LDFLAGS for the compiler
+export CPPFLAGS="-I/opt/homebrew/opt/readline/include"
+export LDFLAGS="-L/opt/homebrew/opt/readline/lib"
 ```
 
----
-
-## Build
-From the project root run:
+### Build
 
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd asharp
+
+# Build the interpreter
 make
-```
 
-This builds the `asharp` executable (or similar binary in the project root). To do a clean rebuild:
-
-```bash
+# Clean build (if needed)
 make clean && make
 ```
+
+The compiled executable `asharp` will be created in the project root.
 
 ---
 
 ## Usage
 
-> **Important**: Current Interpreter of A-Sharp converts `test.as` file in functional object, and it will not print output on the terminal. You need to switch to `Asharp-interpreter` branch for testing `test.as`
+### Interactive REPL
 
-Run the REPL:
-
+Start the interactive shell:
 ```bash
 ./asharp
 ```
 
-Execute a source file (supports `.as` extensions):
+Try some expressions:
+```javascript
+> print 1 + 2 * 3;
+7
+> var name = "A-Sharp";
+> print "Hello from " + name;
+Hello from A-Sharp
+```
 
+### Running Scripts
+
+Execute a source file (`.as` extension):
 ```bash
-./asharp path/to/script.as
+./asharp script.as
 ```
 
-Example snippets to try in the REPL:
+### Example Programs
 
-```
-print 1 + 2 * (3 - 4);
+**Basic Arithmetic:**
+```javascript
+print 1 + 2 * (3 - 4);  // -1
 ```
 
-An example with current capabilities of A-Sharp:
+**Variables and Scoping:**
+```javascript
+var a = "Programming with ";
+var b = "A-Sharp";
 
+{
+  // Local scope
+  var a = 15;
+  var b = 15;
+  print a + b;  // 30
+}
+
+print a + b;  // Programming with A-Sharp
 ```
+
+**Conditional Statements:**
+```javascript
+var age = 20;
+
+if (age >= 18) {
+  print "Adult";
+} else {
+  print "Minor";
+}
+```
+
+**While Loops:**
+```javascript
 var i = 0;
 while (i < 5) {
   print i;
   i = i + 1;
 }
+```
 
-//Global Scope
-var a = "Programming with ";
-var b = "A-Sharp";
-{
-  //Local Scope
-  var a = 15;
-  var b = 15;
-  print a+b;
-}
-print a + b;
-
-a = 8;
-
-if (a > 10){
-  print "Hello";
-}
-else {
-  print "World!";
+**For Loops:**
+```javascript
+for (var i = 0; i < 10; i = i + 1) {
+  print i * i;
 }
 ```
-An example of a Fibonacci generator:
-```
-// A Fibonacci generator using a for loop!
+
+**Fibonacci Generator:**
+```javascript
 var a = 0;
 var b = 1;
-for (var i = 0; i < 5; i = i + 1) {
+
+for (var i = 0; i < 10; i = i + 1) {
   print a;
   var temp = a + b;
   a = b;
@@ -154,11 +168,93 @@ for (var i = 0; i < 5; i = i + 1) {
 }
 ```
 
-Note: the interpreter reads files with the `.as` extension; try `./asharp test.as`.
+More examples can be found in `test.as`.
 
 ---
 
-## Development notes
-- The compiler emits bytecode into `Chunk` structures (`chunk.c/h`) which the VM (`vm.c/h`) then executes.
-- `debug.c` contains a `disassemble` helper useful to inspect generated bytecode during development.
-- Follow the structure from *Crafting Interpreters* if you plan to add language features — the code is organized by the same components (scanner → parser/compiler → VM).
+## Project Structure
+
+```
+A-Sharp/
+├── main.c              # Entry point and CLI interface
+├── scanner.{c,h}       # Lexical analyzer (tokenizer)
+├── compiler.{c,h}      # Parser and bytecode compiler
+├── vm.{c,h}            # VM and bytecode interpreter
+├── chunk.{c,h}         # Bytecode chunk data structure
+├── value.{c,h}         # Runtime value representation
+├── object.{c,h}        # Heap-allocated objects
+├── memory.{c,h}        # Memory management 
+├── table.{c,h}         # Hash table for global variables
+├── debug.{c,h}         # debugging utilities
+├── Makefile            # Build configuration
+├── test.as             # Sample programs
+└── build/              # Build artifacts (generated)
+```
+
+### Architecture Overview
+
+1. **Scanner** (`scanner.c/h`) — Converts source text into tokens
+2. **Compiler** (`compiler.c/h`) — Parses tokens using Pratt parsing and emits bytecode
+3. **Chunk** (`chunk.c/h`) — Stores bytecode instructions and constants
+4. **VM** (`vm.c/h`) — Executes bytecode on a stack-based virtual machine
+5. **Object** (`object.c/h`) — Manages heap-allocated runtime objects
+6. **Memory** (`memory.c/h`) — Handles dynamic allocation and garbage collection
+
+---
+
+## Changelog
+
+| Date       | Update                                                    |
+|------------|-----------------------------------------------------------|
+| 2026-01-07 | Added `if`/`else` statement support                       |
+| 2026-01-08 | Implemented `while` loops                                 |
+| 2026-01-10 | Added `for` loop statement                                |
+| 2026-01-11 | Created `test.as` with example programs                   |
+
+---
+
+## Development
+
+### Adding New Features
+
+The codebase follows the structure from *Crafting Interpreters*:
+
+1. **Add tokens** in `scanner.c` if new keywords are needed
+2. **Extend the parser** in `compiler.c` with parsing rules
+3. **Emit bytecode** for the new feature
+4. **Handle execution** in the VM (`vm.c`)
+
+### Debugging
+
+Use the built-in disassembler to inspect generated bytecode:
+
+```c
+#include "debug.h"
+
+disassembleChunk(&chunk, "my chunk");
+```
+
+Compile with debug flags:
+```bash
+make CFLAGS="-g -O0"
+```
+
+### Testing
+
+Run the test suite:
+```bash
+./asharp test.as
+```
+---
+
+## Contributing
+
+Contributions are welcome! Areas for improvement:
+
+- Function declarations and calls
+- First-class functions and closures
+- Object-oriented features (classes, inheritance)
+- Standard library functions
+- Error messages and diagnostics
+- Performance optimizations
+
