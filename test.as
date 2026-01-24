@@ -1,25 +1,7 @@
-//This File include some example codes for the `A-Sharp` language
-// ==========================================
-//  The AS Language Showcase
-//  Current Version: 0.1
-// ==========================================
-
-print "Variables and Strings";
-var language = "A-Sharp";
-var version = "0.1";
-var greeting = "Hello from " + language + " v" + version + "!";
-print greeting;
-
-print ""; 
-print "Logic and Branching";
-var isComplete = false;
-var chapter = 23;
-
-if (chapter >= 23) {
-  print "Status: Turing Complete (Loops & Ifs supported)";
-} else {
-  print "Status: Still learning...";
+fun sayHi() { 
+  print "Hi"; 
 }
+print sayHi;
 
 print "";
 print "Local Scope & Shadowing";

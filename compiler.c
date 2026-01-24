@@ -122,8 +122,7 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) { emitByte(byte1); emitByte(
 static void emitReturn() { emitByte(OP_RETURN); }
 
 static ObjFunction* endCompiler() {
-  emitReturn(); //Calling helper here
-  
+  emitReturn();
   ObjFunction* function = current->function;
 
 #ifdef DEBUG_PRINT_CODE
@@ -133,6 +132,7 @@ static ObjFunction* endCompiler() {
   }
 #endif
 
+  current = current->enclosing; //Restore the previous compiler
   return function;
 }
 
@@ -618,23 +618,23 @@ static void statement() {
 
 //Initialize the compiler
 static void initCompiler(Compiler* compiler, FunctionType type) {
-  compiler->enclosing = NULL; // will be used later on
+  compiler->enclosing = current; //Save the previous compiler
   compiler->function = NULL;
   compiler->type = type;
+  
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
+  compiler->function = newFunction();
   
-  compiler->function = newFunction(); // Create the empty "Recipe Card"
-  current = compiler;
+  current = compiler; //switch to the new one
 
-  //If we are compiling a named function, copy its name
   if (type != TYPE_SCRIPT) {
     compiler->function->name = copyString(parser.previous.start, parser.previous.length);
   }
 
   Local* local = &compiler->locals[compiler->localCount++];
   local->depth = 0;
-  local->name.start = ""; // Internal use only
+  local->name.start = "";
   local->name.length = 0;
 }
 
