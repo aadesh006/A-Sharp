@@ -92,6 +92,43 @@ static bool valuesEqual(Value a, Value b) {
   }
 }
 
+static bool call(ObjFunction* function, int argCount) {
+  // 1. Check if the arguments passed match the function's expectation
+  if (argCount != function->arity) {
+    runtimeError("Expected %d arguments but got %d.", 
+        function->arity, argCount);
+    return false;
+  }
+
+  // 2. Prevent Stack Overflow
+  if (vm.frameCount == FRAMES_MAX) {
+    runtimeError("Stack overflow.");
+    return false;
+  }
+
+  // 3. Create a new CallFrame
+  CallFrame* frame = &vm.frames[vm.frameCount++];
+  frame->function = function;
+  frame->ip = function->chunk.code;
+  
+  // 4. Point the 'slots' pointer to the start of the arguments on the stack
+  frame->slots = vm.stackTop - argCount - 1; 
+  return true;
+}
+
+static bool callValue(Value callee, int argCount) {
+  if (IS_OBJ(callee)) {
+    switch (OBJ_TYPE(callee)) {
+      case OBJ_FUNCTION: 
+        return call(AS_FUNCTION(callee), argCount);
+      default:
+        break; // Non-callable object type
+    }
+  }
+  runtimeError("Can only call functions and classes.");
+  return false;
+}
+
 static InterpretResult run() {
   // Grab the current frame info
   CallFrame* frame = &vm.frames[vm.frameCount - 1];
@@ -184,19 +221,29 @@ static InterpretResult run() {
 
       case OP_JUMP: {
         uint16_t offset = READ_SHORT();
-        frame->ip += offset; // <--- FIX: Update frame->ip
+        frame->ip += offset;
         break;
       }
       case OP_JUMP_IF_FALSE: {
         uint16_t offset = READ_SHORT();
         if (isFalsey(peek(0))) {
-          frame->ip += offset; // <--- FIX: Update frame->ip
+          frame->ip += offset;
         }
         break;
       }
       case OP_LOOP: {
         uint16_t offset = READ_SHORT();
-        frame->ip -= offset; // <--- FIX: Update frame->ip
+        frame->ip -= offset;
+        break;
+      }
+
+      case OP_CALL: {
+        int argCount = READ_BYTE();
+        if (!callValue(peek(argCount), argCount)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        // Update the frame pointer
+        frame = &vm.frames[vm.frameCount - 1];
         break;
       }
 

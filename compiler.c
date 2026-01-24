@@ -350,7 +350,7 @@ static uint8_t argumentList() {
   return argCount;
 }
 
-static void call(bool canAssign) {
+static void call() { 
   uint8_t argCount = argumentList();
   emitBytes(OP_CALL, argCount);
 }
