@@ -288,8 +288,21 @@ static InterpretResult run() {
       }
 
       case OP_RETURN: {
-        // No longer prints result automatically
-        return INTERPRET_OK;
+        Value result = pop();       // 1. Pop the return value
+        vm.frameCount--;            // 2. Discard the current frame (exit function)
+        
+        // Edge Case: If we just returned from the Main Script, we are done!
+        if (vm.frameCount == 0) {
+          pop();                    // Pop the main function object
+          return INTERPRET_OK;
+        }
+
+        vm.stackTop = frame->slots; // 3. Discard local variables from the stack
+        push(result);               // 4. Push the return value back for the caller
+        
+        // 5. Restore the frame pointer to the caller
+        frame = &vm.frames[vm.frameCount - 1];
+        break;
       }
     }
   }
