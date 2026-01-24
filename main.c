@@ -71,12 +71,17 @@ static void runFile(const char* path) {
   char* source = readFile(path);
   
   ObjFunction* function = compile(source);
-  if (function == NULL) exit(65); // Compile error
-
-  printf("Compiled to a function object!\n");
-  // interpret(function); // We will add this later!
-
-  free(source);
+  if (function == NULL) {
+    free(source);
+    exit(65);
+  }
+  
+  InterpretResult result = interpret(function); 
+  
+  free(source); 
+  
+  if (result == INTERPRET_COMPILE_ERROR) exit(65);
+  if (result == INTERPRET_RUNTIME_ERROR) exit(70);
 }
 
 // MAIN ENTRY POINT

@@ -50,6 +50,12 @@ static int jumpInstruction(const char* name, int sign, Chunk* chunk, int offset)
   return offset + 3;
 }
 
+static int byteInstruction(const char* name, Chunk* chunk, int offset) {
+  uint8_t slot = chunk->code[offset + 1];
+  printf("%-16s %4d\n", name, slot);
+  return offset + 2; 
+}
+
 // The Main Decoder Switch
 int disassembleInstruction(Chunk* chunk, int offset) {
   printf("%04d ", offset); // Print the memory address (e.g., 0000)
@@ -99,8 +105,8 @@ int disassembleInstruction(Chunk* chunk, int offset) {
     case OP_SET_LOCAL:
       return constantInstruction("OP_SET_LOCAL", chunk, offset);
 
-    // case OP_CALL:
-    //   return byteInstruction("OP_CALL", chunk, offset);
+    case OP_CALL:
+      return byteInstruction("OP_CALL", chunk, offset);
 
     case OP_JUMP:
       return jumpInstruction("OP_JUMP", 1, chunk, offset);
