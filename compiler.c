@@ -512,6 +512,10 @@ static void patchJump(int offset) {
   currentChunk()->code[offset + 1] = jump & 0xff;
 }
 
+static void returnStatement() {
+
+}
+
 static void ifStatement() {
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
   expression();
@@ -620,6 +624,10 @@ static void statement() {
 
   else if (match(TOKEN_IF)) {
     ifStatement();
+  }
+
+  else if (match(TOKEN_RETURN)) {
+    returnStatement();
   }
 
   else if (match(TOKEN_FOR)){
