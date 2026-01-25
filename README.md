@@ -127,6 +127,15 @@ var b = "A-Sharp";
 
 print a + b;  // Programming with A-Sharp
 ```
+**Function**
+```javascript
+fun greet(){
+  print "Hello From Greet Function!"
+}
+
+greet();
+
+```
 
 **Conditional Statements:**
 ```javascript
