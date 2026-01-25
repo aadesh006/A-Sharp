@@ -2,7 +2,7 @@
 
 A bytecode virtual machine and interpreter for the A-Sharp programming language, written in C. This implementation follows the architecture described in Part III of **Crafting Interpreters** by Robert Nystrom.
 
-**Project Status:** Active development — Core features including control flow, scoping, and basic data types are fully functional.
+**Project Status:** Active development: Core features including control flow, scoping, and basic data types are fully functional.
 
 ---
 
@@ -32,9 +32,9 @@ A-Sharp is a dynamically-typed scripting language with a stack-based bytecode VM
   - `for` loops with C-style syntax
 - **I/O**: `print` statement for output
 - **REPL**: Interactive shell with readline support
+- **Function Calling**: You create a function and call them in the codebase
 
 ### Upcoming
-- Functions and closures
 - Classes and objects
 - Standard library
 - Module system
@@ -68,7 +68,7 @@ export LDFLAGS="-L/opt/homebrew/opt/readline/lib"
 ```bash
 # Clone the repository
 git clone <https://github.com/aadesh006/A-Sharp.git>
-cd asharp
+cd A-Sharp
 
 # Build the interpreter
 make
@@ -134,6 +134,13 @@ fun greet(){
 }
 
 greet();
+
+fun add(a, b) {
+  return a + b;
+}
+
+var result = add(10, 20);
+print result;
 
 ```
 

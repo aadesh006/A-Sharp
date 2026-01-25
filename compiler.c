@@ -513,6 +513,20 @@ static void patchJump(int offset) {
 }
 
 static void returnStatement() {
+    if (current->type == TYPE_SCRIPT) {
+    error("Can't return from top-level code.");
+  }
+  //Check for "return;" (no value)
+  if (match(TOKEN_SEMICOLON)) {
+    emitReturn(); // Emits OP_NIL then OP_RETURN
+  } 
+  
+  else {
+    //Parse "return value;"
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+    emitByte(OP_RETURN);
+  }
 
 }
 
