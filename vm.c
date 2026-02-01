@@ -119,10 +119,18 @@ static bool call(ObjFunction* function, int argCount) {
 static bool callValue(Value callee, int argCount) {
   if (IS_OBJ(callee)) {
     switch (OBJ_TYPE(callee)) {
+      case OBJ_NATIVE: {
+        NativeFn native = AS_NATIVE(callee);
+        // Run the C function immediately
+        Value result = native(argCount, vm.stackTop - argCount);
+        vm.stackTop -= argCount + 1; //Clean up the stack (pop args + the function itself)
+        push(result);//Push the result back onto the stack
+        return true;
+      }
       case OBJ_FUNCTION: 
         return call(AS_FUNCTION(callee), argCount);
       default:
-        break; // Non-callable object type
+        break;
     }
   }
   runtimeError("Can only call functions and classes.");
