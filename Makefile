@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -g -Wall
-LIBS = -lreadline
+LIBS = -lreadline -lm
 
 BUILD_DIR = build
 
