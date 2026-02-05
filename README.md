@@ -2,7 +2,7 @@
 
 A bytecode virtual machine and interpreter for the A-Sharp programming language, written in C. This implementation follows the architecture described in Part III of **Crafting Interpreters** by Robert Nystrom.
 
-**Project Status:** Active development: Core features including control flow, scoping, and basic data types are fully functional.
+**Project Status:** Active development: Core features including control flow, scoping, functions, native functions, and user input are fully functional.
 
 ---
 
@@ -12,6 +12,9 @@ A-Sharp is a dynamically-typed scripting language with a stack-based bytecode VM
 
 - **Clean syntax** for variables, expressions, and control flow
 - **Lexical scoping** with local and global variables
+- **User-defined functions** with return statements
+- **Native functions** for common operations
+- **User input** capabilities for interactive programs
 - **Interactive REPL** with line editing and command history
 - **Efficient bytecode execution** via a custom virtual machine
 
@@ -30,13 +33,19 @@ A-Sharp is a dynamically-typed scripting language with a stack-based bytecode VM
   - `if`/`else` statements for conditional execution
   - `while` loops for iteration
   - `for` loops with C-style syntax
-- **I/O**: `print` statement for output
+- **Functions**: User-defined functions with parameters and `return` statements
+- **Native Functions**: Built-in functions including:
+  - `clock()` - Returns current time in seconds since epoch
+  - `sqrt(n)` - Calculates square root of a number
+  - `floor(n)` - Returns largest integer less than or equal to a number
+- **I/O**: 
+  - `print` statement for output
+  - `input(prompt)` function for reading user input
 - **REPL**: Interactive shell with readline support
-- **Function Calling**: You create a function and call them in the codebase
 
 ### Upcoming
 - Classes and objects
-- Standard library
+- Standard library expansion
 - Module system
 
 ---
@@ -97,6 +106,8 @@ Try some expressions:
 > var name = "A-Sharp";
 > print "Hello from " + name;
 Hello from A-Sharp
+> print clock();
+1738612345.678
 ```
 
 ### Running Scripts
@@ -127,10 +138,11 @@ var b = "A-Sharp";
 
 print a + b;  // Programming with A-Sharp
 ```
-**Function**
+
+**Functions:**
 ```javascript
-fun greet(){
-  print "Hello From Greet Function!"
+fun greet() {
+  print "Hello From Greet Function!";
 }
 
 greet();
@@ -140,13 +152,56 @@ fun add(a, b) {
 }
 
 var result = add(10, 20);
-print result;
+print result;  // 30
 
 fun fib(n) {
   if (n < 2) return n;
   return fib(n - 2) + fib(n - 1);
 }
 
+print fib(10);  // 55
+```
+
+**Native Functions:**
+```javascript
+// Get current time
+var startTime = clock();
+print "Start time: " + startTime;
+
+// Mathematical operations
+print "Square root of 64 is:";
+print sqrt(64);  // 8
+
+print "Floor of 5.95 is:";
+print floor(5.95);  // 5
+```
+
+**User Input:**
+```javascript
+print "Calculate Hypotenuse";
+
+var a = input("Enter side A: ");
+var b = input("Enter side B: ");
+
+// Note: input() returns strings, so mathematical operations
+// work with numeric string values
+var sumOfSquares = (a * a) + (b * b);
+var hypotenuse = sqrt(sumOfSquares);
+
+print "The hypotenuse is: " + hypotenuse;
+```
+
+**Interactive Program Example:**
+```javascript
+var name = input("What is your name? ");
+print "Hello, " + name + "!";
+
+var age = input("How old are you? ");
+if (age >= 18) {
+  print "You are an adult.";
+} else {
+  print "You are a minor.";
+}
 ```
 
 **Conditional Statements:**
@@ -190,6 +245,69 @@ for (var i = 0; i < 10; i = i + 1) {
 ```
 
 More examples can be found in `test.as`.
+
+---
+
+## Built-in Functions Reference
+
+### `clock()`
+Returns the current time in seconds since the Unix epoch (January 1, 1970).
+
+**Usage:**
+```javascript
+var start = clock();
+// ... some code ...
+var end = clock();
+print "Elapsed time: " + (end - start) + " seconds";
+```
+
+### `sqrt(n)`
+Returns the square root of a number.
+
+**Parameters:**
+- `n` - A number (must be non-negative)
+
+**Returns:** The square root of `n`
+
+**Usage:**
+```javascript
+print sqrt(16);    // 4
+print sqrt(2);     // 1.414...
+print sqrt(100);   // 10
+```
+
+### `floor(n)`
+Returns the largest integer less than or equal to a given number.
+
+**Parameters:**
+- `n` - A number
+
+**Returns:** The floor of `n`
+
+**Usage:**
+```javascript
+print floor(5.95);   // 5
+print floor(5.05);   // 5
+print floor(-2.3);   // -3
+```
+
+### `input(prompt)`
+Reads a line of text from the user.
+
+**Parameters:**
+- `prompt` - A string to display before reading input
+
+**Returns:** A string containing the user's input
+
+**Usage:**
+```javascript
+var name = input("Enter your name: ");
+print "Hello, " + name;
+
+var choice = input("Choose an option (1-3): ");
+```
+
+**Note:** Currently, `input()` returns strings. For numeric operations, the values will be coerced automatically when used in arithmetic expressions.
 
 ---
 
@@ -244,11 +362,14 @@ asharp/
 - Global variables use runtime hash table lookup by name.
 - Control flow uses bytecode jump instructions with backpatching for forward jumps.
 - The REPL runs in the same VM instance, maintaining global state between statements.
+- **Native functions** are registered at VM initialization and stored in the global variable table.
+- User-defined functions are compiled into function objects containing their own bytecode chunks.
 
 **Performance Considerations:**
 - Bytecode is designed to be compact; most instructions are single-byte opcodes.
 - The VM's instruction dispatch uses a computed goto (if supported) or switch statement for fast execution.
 - Constants are stored in a separate array and referenced by index to keep bytecode small.
+- Native functions bypass the bytecode interpreter for direct execution of C code.
 
 ### Adding New Features
 
@@ -276,6 +397,21 @@ case '%': addToken(TOKEN_MODULO); break;
 case OP_MODULO: BINARY_OP(%, NUMBER_VAL); break;
 ```
 
+**Adding a new native function:**
+```c
+// 1. Define the C function in vm.c
+static Value myNative(int argCount, Value* args) {
+    // Implementation
+    return NUMBER_VAL(result);
+}
+
+// 2. Register it in initVM()
+defineNative("myFunction", myNative);
+
+// 3. Use it in A-Sharp code
+var result = myFunction(arg1, arg2);
+```
+
 ### Debugging
 
 Use the built-in disassembler to inspect generated bytecode:
@@ -292,7 +428,7 @@ make CFLAGS="-g -O0"
 ```
 
 **Debugging Tips:**
-- Enable trace execution in `vm.c` by uncommacing `#define DEBUG_TRACE_EXECUTION` to see each instruction as it executes.
+- Enable trace execution in `vm.c` by uncommenting `#define DEBUG_TRACE_EXECUTION` to see each instruction as it executes.
 - Use `#define DEBUG_PRINT_CODE` in `compiler.c` to automatically disassemble compiled chunks.
 - The debugger prints the stack state before each instruction when tracing is enabled.
 
@@ -309,10 +445,11 @@ Run the test suite:
 
 Contributions are welcome! Areas for improvement:
 
-- Function declarations and calls
+- Additional native functions (string manipulation, file I/O, etc.)
+- Type conversion functions (parseNumber, toString, etc.)
 - First-class functions and closures
 - Object-oriented features (classes, inheritance)
-- Standard library functions
+- Standard library expansion
 - Error messages and diagnostics
 - Performance optimizations
 
@@ -321,5 +458,5 @@ Please open an issue to discuss major changes before submitting a pull request.
 ---
 
 ## Author
-*Aadesh Chaudhari\
+*Aadesh Chaudhari  
 @aadesh006*
