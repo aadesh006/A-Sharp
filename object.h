@@ -14,10 +14,16 @@
 typedef Value (*NativeFn)(int argCount, Value* args);
 
 typedef enum {
+  OBJ_CLOSURE,
   OBJ_FUNCTION,
   OBJ_NATIVE,
   OBJ_STRING,
 } ObjType;
+
+typedef struct {
+  Obj obj;
+  ObjFunction* function;
+} ObjClosure;
 
 struct Obj {
   ObjType type;
@@ -61,5 +67,10 @@ static inline bool isObjType(Value value, ObjType type) {
 //Critical line
 ObjString* copyString(const char* chars, int length);
 void printObject(Value value);
+
+ObjClosure* newClosure(ObjFunction* function);
+
+#define AS_CLOSURE(value)   ((ObjClosure*)AS_OBJ(value))
+#define IS_CLOSURE(value)   isObjType(value, OBJ_CLOSURE)
 
 #endif
