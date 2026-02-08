@@ -59,6 +59,25 @@ ObjString* copyString(const char* chars, int length) {
   return string;
 }
 
+ObjString* takeString(char* chars, int length) {
+  uint32_t hash = hashString(chars, length);
+
+  // Check if string is already interned
+  ObjString* interned = tableFindString(&vm.strings, chars, length, hash);
+  if (interned != NULL) {
+    FREE_ARRAY(char, chars, length + 1);
+    return interned;
+  }
+
+  return allocateString(chars, length, hash);
+}
+
+ObjClosure* newClosure(ObjFunction* function) {
+  ObjClosure* closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
+  closure->function = function;
+  return closure;
+}
+
 ObjFunction* newFunction() {
   ObjFunction* function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
   function->arity = 0;
@@ -93,5 +112,10 @@ void printObject(Value value) {
     case OBJ_STRING:
       printf("%s", AS_STRING(value)->chars);
       break;
+    case OBJ_CLOSURE:
+      printFunction(AS_CLOSURE(value)->function);
+      break;
+    case OBJ_UPVALUE:
+    break;
   }
 }

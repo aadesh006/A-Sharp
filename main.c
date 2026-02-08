@@ -59,7 +59,7 @@ static void repl() {
     ObjFunction* function = compile(line);
     if (function != NULL) {
         //printf("Compiled to a function object!\n");
-        interpret(function); // triggering interpreter in the terminal
+        interpret(line); // triggering interpreter in the terminal
     }
 
     // readline allocates memory for every line, so we must free it
@@ -70,20 +70,14 @@ static void repl() {
 static void runFile(const char* path) {
   char* source = readFile(path);
   
-  ObjFunction* function = compile(source);
-  if (function == NULL) {
-    free(source);
-    exit(65);
-  }
-  
-  InterpretResult result = interpret(function); 
+  //Pass the source string directly. The VM handles compilation now.
+  InterpretResult result = interpret(source); 
   
   free(source); 
-  
+
   if (result == INTERPRET_COMPILE_ERROR) exit(65);
   if (result == INTERPRET_RUNTIME_ERROR) exit(70);
 }
-
 // MAIN ENTRY POINT
 int main(int argc, const char* argv[]) {
   initVM();

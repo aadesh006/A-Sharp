@@ -38,6 +38,11 @@ static void freeObject(Obj* object) {
       freeChunk(&function->chunk);
       FREE(ObjFunction, object);
       break;
+    case OBJ_CLOSURE:
+      FREE(ObjClosure, object);
+      break;
+    case OBJ_UPVALUE:
+      break;
     }
   }
 }

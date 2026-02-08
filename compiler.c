@@ -261,7 +261,7 @@ static void function(FunctionType type) {
   ObjFunction* function = endCompiler();
   
   // Emit the code to store the function in a constant
-  emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
+  emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
 }
 
 static void funDeclaration() {
