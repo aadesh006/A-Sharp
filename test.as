@@ -1,40 +1,54 @@
-fun add(a, b, c) {
-  print "Adding three numbers...";
-  return a + b + c;
+print "=== Test 1: Basic Functions & Globals ===";
+var globalMsg = "Global Variable";
+
+fun printGlobal() {
+  print globalMsg; // Works because it's global
 }
 
-var sum = add(10, 20, 30);
-print sum;
+printGlobal();
 
-fun isEven(n) {
-  if (n < 0) {
-    print "Negative number!";
-    return false;
-  }
-  
-  // A naive way to check evenness using a loop
-  while (n > 0) {
-    n = n - 2;
-  }
-  
-  if (n == 0) return true;
-  return false;
+
+print "=== Test 2: First-Class Functions (Passing) ===";
+fun runner(fn) {
+  print "Running function...";
+  fn();
 }
 
-print isEven(10);
-print isEven(7);
+fun hello() {
+  print "Hello from inside!";
+}
 
-print "============Recurvise Function===========";
+// We are passing 'hello' as a value!
+runner(hello);
 
+
+print "=== Test 3: Returning Functions ===";
+fun getPrinter() {
+  fun inner() {
+    print "I was returned!";
+  }
+  return inner; // We are returning a closure!
+}
+
+var myFunc = getPrinter();
+myFunc();
+
+
+print "=== Test 4: Native Functions ===";
+print "2^10 (Power):";
+print pow(2, 10);
+
+print "Square root of 25:";
+print sqrt(25);
+
+
+print "=== Test 5: Recursion (Stack Stress Test) ===";
 fun fib(n) {
   if (n < 2) return n;
-  return fib(n - 2) + fib(n - 1);
+  return fib(n - 1) + fib(n - 2);
 }
 
-var start = 0;
-while (start < 10) {
-  print fib(start);
-  start = start + 1;
-}
-
-print "==========Execution Complete==========";
+var start = clock();
+print fib(10); // Should be 55
+print "Time taken:";
+print clock() - start;
