@@ -35,6 +35,11 @@ typedef enum {
   TYPE_SCRIPT
 } FunctionType;
 
+typedef struct {
+  uint8_t index;
+  bool isLocal;
+} Upvalue;
+
 typedef struct Compiler {
   struct Compiler* enclosing;
   ObjFunction* function;
@@ -42,6 +47,7 @@ typedef struct Compiler {
 
   Local locals[UINT8_COUNT];
   int localCount;
+  Upvalue upvalues[UINT8_COUNT];
   int scopeDepth;
 } Compiler;
 
