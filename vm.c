@@ -29,6 +29,8 @@ static Value floorNative(int argCount, Value* args) {
   return NUMBER_VAL(floor(AS_NUMBER(args[0])));
 }
 
+//Native Function for power operations
+//Later Caret (^) can be added as power operator
 static Value powNative(int argCount, Value* args) {
   if (argCount != 2 || !IS_NUMBER(args[0]) || !IS_NUMBER(args[1])) return NIL_VAL;
   return NUMBER_VAL(pow(AS_NUMBER(args[0]), AS_NUMBER(args[1])));
@@ -85,24 +87,6 @@ static void defineNative(const char* name, NativeFn function) {
   pop();
 }
 
-//Native Function for power operations
-//Later Caret (^) can be added as power operator
-static Value powNative(int argCount, Value* args) {
-  if (argCount != 2) {
-    // pow() requires exactly 2 arguments
-    return NIL_VAL; 
-  }
-
-  if (!IS_NUMBER(args[0]) || !IS_NUMBER(args[1])) {
-    return NIL_VAL;
-  }
-
-  double base = AS_NUMBER(args[0]);
-  double exponent = AS_NUMBER(args[1]);
-  
-  return NUMBER_VAL(pow(base, exponent));
-}
-
 void initVM() {
   resetStack();
   vm.objects = NULL;
@@ -136,7 +120,7 @@ static Value peek(int distance) {
   return vm.stackTop[-1 - distance];
 }
 
-// --- VM Helper Functions ---
+//VM Helper Functions
 
 static bool isFalsey(Value value) {
   return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
@@ -158,7 +142,7 @@ static void concatenate() {
   push(OBJ_VAL(result));
 }
 
-// --- Core Execution ---
+//Core Execution
 
 static bool call(ObjClosure* closure, int argCount) {
   if (argCount != closure->function->arity) {
@@ -202,7 +186,7 @@ static bool callValue(Value callee, int argCount) {
 static InterpretResult run() {
   CallFrame* frame = &vm.frames[vm.frameCount - 1];
 
-  // --- MACROS ---
+  // MACROS
   #define READ_BYTE() (*frame->ip++)
 
   #define READ_SHORT() \
