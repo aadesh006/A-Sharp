@@ -28,7 +28,8 @@ typedef enum {
 typedef struct {
   Token name;
   int depth;
-}Local;
+  bool isCaptured;
+} Local;
 
 typedef enum {
   TYPE_FUNCTION,
@@ -317,22 +318,65 @@ static int resolveLocal(Compiler* compiler, Token* name) {
   return -1; // Not found in locals
 }
 
-static void namedVariable(Token name) {
+static int addUpvalue(Compiler* compiler, uint8_t index, bool isLocal) {
+  int upvalueCount = compiler->function->upvalueCount;
+
+  // Check if we already captured this variable
+  for (int i = 0; i < upvalueCount; i++) {
+    Upvalue* upvalue = &compiler->upvalues[i];
+    if (upvalue->index == index && upvalue->isLocal == isLocal) {
+      return i;
+    }
+  }
+
+  if (upvalueCount == UINT8_COUNT) {
+    error("Too many closure variables in function.");
+    return 0;
+  }
+
+  compiler->upvalues[upvalueCount].isLocal = isLocal;
+  compiler->upvalues[upvalueCount].index = index;
+  return compiler->function->upvalueCount++;
+}
+
+static int resolveUpvalue(Compiler* compiler, Token* name) {
+  if (compiler->enclosing == NULL) return -1;
+
+  //Try to find it as a LOCAL in the immediate enclosing function
+  int local = resolveLocal(compiler->enclosing, name);
+  if (local != -1) {
+    // Found it! Mark it as "captured" (isLocal = true)
+    compiler->enclosing->locals[local].isCaptured = true;
+    return addUpvalue(compiler, (uint8_t)local, true);
+  }
+
+  //Recursive step: Try to find it as an UPVALUE in the enclosing function
+  int upvalue = resolveUpvalue(compiler->enclosing, name);
+  if (upvalue != -1) {
+    // Found it deeper up! Mark it as "passed through" (isLocal = false)
+    return addUpvalue(compiler, (uint8_t)upvalue, false);
+  }
+
+  return -1;
+}
+
+static void namedVariable(Token name, bool canAssign) {
   uint8_t getOp, setOp;
   int arg = resolveLocal(current, &name);
 
   if (arg != -1) {
-    // It is a local variable
     getOp = OP_GET_LOCAL;
     setOp = OP_SET_LOCAL;
+  } else if ((arg = resolveUpvalue(current, &name)) != -1) { // <--- THIS IS THE NEW PART
+    getOp = OP_GET_UPVALUE;
+    setOp = OP_SET_UPVALUE;
   } else {
-    // It IS NOT local, assume Global
     arg = identifierConstant(&name);
     getOp = OP_GET_GLOBAL;
     setOp = OP_SET_GLOBAL;
   }
 
-  if (match(TOKEN_EQUAL)) {
+  if (canAssign && match(TOKEN_EQUAL)) {
     expression();
     emitBytes(setOp, (uint8_t)arg);
   } else {
@@ -340,8 +384,8 @@ static void namedVariable(Token name) {
   }
 }
 
-static void variable() {
-  namedVariable(parser.previous);
+static void variable(bool canAssign) {
+  namedVariable(parser.previous, canAssign);
 }
 
 static uint8_t argumentList() {
