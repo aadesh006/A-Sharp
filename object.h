@@ -13,6 +13,7 @@
 // 2. FORWARD DECLARATIONS (These match value.h)
 typedef struct Obj Obj;
 typedef struct ObjFunction ObjFunction;
+typedef struct ObjUpvalue ObjUpvalue;
 typedef Value (*NativeFn)(int argCount, Value* args);
 
 // 3. ENUM
@@ -55,11 +56,19 @@ typedef struct {
   NativeFn function;
 } ObjNative;
 
-// FIX 4: Added 'struct ObjClosure' tag (Optional, but likely needed later)
 typedef struct {
   Obj obj;
   ObjFunction* function;
+  ObjUpvalue** upvalues;
+  int upvalueCount;
 } ObjClosure;
+
+struct ObjUpvalue {
+  Obj obj;
+  Value* location;
+  Value closed;
+  struct ObjUpvalue* next;
+};
 
 
 // 5. FUNCTIONS & MACROS
@@ -83,5 +92,7 @@ ObjNative* newNative(NativeFn function);
 ObjClosure* newClosure(ObjFunction* function);
 #define AS_CLOSURE(value)    ((ObjClosure*)AS_OBJ(value))
 #define IS_CLOSURE(value)    isObjType(value, OBJ_CLOSURE)
+
+ObjUpvalue* newUpvalue(Value* slot);
 
 #endif
