@@ -26,10 +26,10 @@ typedef struct {
   Value* stackTop;
   Table globals;
   Table strings;
+  ObjUpvalue* openUpvalues;
   
   size_t bytesAllocated;
   size_t nextGC;
-  
   Obj* objects;
 } VM;
 
