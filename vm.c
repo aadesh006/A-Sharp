@@ -183,6 +183,16 @@ static bool callValue(Value callee, int argCount) {
   return false;
 }
 
+static ObjUpvalue* captureUpvalue(Value* local) {
+
+}
+
+static void closeUpvalues(Value* last) {
+  while (vm.openUpvalues != NULL && vm.openUpvalues->location >= last) {
+
+  }
+}
+
 static InterpretResult run() {
   CallFrame* frame = &vm.frames[vm.frameCount - 1];
 
