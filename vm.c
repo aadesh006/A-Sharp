@@ -90,6 +90,7 @@ static void defineNative(const char* name, NativeFn function) {
 void initVM() {
   resetStack();
   vm.objects = NULL;
+  vm.openUpvalues = NULL;
   initTable(&vm.strings);
   initTable(&vm.globals);
 
