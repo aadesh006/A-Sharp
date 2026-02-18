@@ -268,20 +268,24 @@ static InterpretResult run() {
         push(constant);
         break;
       }
+
       case OP_NIL: push(NIL_VAL); break;
       case OP_TRUE: push(BOOL_VAL(true)); break;
       case OP_FALSE: push(BOOL_VAL(false)); break;
       case OP_POP: pop(); break;
+      
       case OP_GET_LOCAL: {
         uint8_t slot = READ_BYTE();
         push(frame->slots[slot]);
         break;
       }
+
       case OP_SET_LOCAL: {
         uint8_t slot = READ_BYTE();
         frame->slots[slot] = peek(0);
         break;
       }
+
       case OP_GET_GLOBAL: {
         ObjString* name = READ_STRING();
         Value value;
@@ -292,12 +296,14 @@ static InterpretResult run() {
         push(value);
         break;
       }
+
       case OP_DEFINE_GLOBAL: {
         ObjString* name = READ_STRING();
         tableSet(&vm.globals, name, peek(0));
         pop();
         break;
       }
+
       case OP_SET_GLOBAL: {
         ObjString* name = READ_STRING();
         if (tableSet(&vm.globals, name, peek(0))) {
@@ -307,6 +313,7 @@ static InterpretResult run() {
         }
         break;
       }
+
       case OP_EQUAL: {
         Value b = pop();
         Value a = pop();
@@ -315,6 +322,7 @@ static InterpretResult run() {
       }
       case OP_GREATER:  BINARY_OP(BOOL_VAL, >); break;
       case OP_LESS:     BINARY_OP(BOOL_VAL, <); break;
+
       case OP_ADD: {
         if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
           concatenate();
@@ -331,9 +339,11 @@ static InterpretResult run() {
       case OP_SUBTRACT: BINARY_OP(NUMBER_VAL, -); break;
       case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *); break;
       case OP_DIVIDE:   BINARY_OP(NUMBER_VAL, /); break;
+
       case OP_NOT:
         push(BOOL_VAL(isFalsey(pop())));
         break;
+
       case OP_NEGATE:
         if (!IS_NUMBER(peek(0))) {
           runtimeError("Operand must be a number.");
@@ -341,26 +351,31 @@ static InterpretResult run() {
         }
         push(NUMBER_VAL(-AS_NUMBER(pop())));
         break;
+
       case OP_PRINT: {
         printValue(pop());
         printf("\n");
         break;
       }
+
       case OP_JUMP: {
         uint16_t offset = READ_SHORT();
         frame->ip += offset;
         break;
       }
+
       case OP_JUMP_IF_FALSE: {
         uint16_t offset = READ_SHORT();
         if (isFalsey(peek(0))) frame->ip += offset;
         break;
       }
+
       case OP_LOOP: {
         uint16_t offset = READ_SHORT();
         frame->ip -= offset;
         break;
       }
+
       case OP_CALL: {
         int argCount = READ_BYTE();
         if (!callValue(peek(argCount), argCount)) {
@@ -369,12 +384,25 @@ static InterpretResult run() {
         frame = &vm.frames[vm.frameCount - 1];
         break;
       }
+
       case OP_CLOSURE: {
         ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
         ObjClosure* closure = newClosure(function);
         push(OBJ_VAL(closure));
+
+        //Read the upvalue payload
+        for (int i = 0; i < closure->upvalueCount; i++) {
+          uint8_t isLocal = READ_BYTE();
+          uint8_t index = READ_BYTE();
+          if (isLocal) {
+            closure->upvalues[i] = captureUpvalue(frame->slots + index);
+          } else {
+            closure->upvalues[i] = frame->closure->upvalues[index];
+          }
+        }
         break;
       }
+
       case OP_RETURN: {
         Value result = pop();
         vm.frameCount--;
