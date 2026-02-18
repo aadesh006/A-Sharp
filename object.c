@@ -72,6 +72,14 @@ ObjString* takeString(char* chars, int length) {
   return allocateString(chars, length, hash);
 }
 
+ObjUpvalue* newUpvalue(Value* slot) {
+  ObjUpvalue* upvalue = ALLOCATE_OBJ(ObjUpvalue, OBJ_UPVALUE);
+  upvalue->location = slot;
+  upvalue->closed = NIL_VAL;
+  upvalue->next = NULL;
+  return upvalue;
+}
+
 ObjClosure* newClosure(ObjFunction* function) {
   ObjClosure* closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
   closure->function = function;
