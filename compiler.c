@@ -52,7 +52,7 @@ typedef struct Compiler {
   int scopeDepth;
 } Compiler;
 
-typedef void (*ParseFn)();
+typedef void (*ParseFn)(bool canAssign);
 
 typedef struct {
   ParseFn prefix;
@@ -74,6 +74,7 @@ static void parsePrecedence(Precedence precedence);
 static void initCompiler(Compiler* compiler, FunctionType type);
 static void beginScope();
 static void block();
+
 
 static Chunk* currentChunk() {
   return &current->function->chunk;
@@ -299,16 +300,16 @@ static void parsePrecedence(Precedence precedence);
 
 // --- GRAMMAR ---
 
-static void number() {
+static void number(bool canAssign) {
   double value = strtod(parser.previous.start, NULL);
   emitConstant(NUMBER_VAL(value));
 }
 
-static void string() {
+static void string(bool canAssign) {
   emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length - 2)));
 }
 
-static void grouping() { expression(); consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression."); }
+static void grouping(bool canAssign) { expression(); consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression."); }
 
 static int resolveLocal(Compiler* compiler, Token* name) {
   for (int i = compiler->localCount - 1; i >= 0; i--) {
@@ -404,12 +405,12 @@ static uint8_t argumentList() {
   return argCount;
 }
 
-static void call() { 
+static void call(bool canAssign) { 
   uint8_t argCount = argumentList();
   emitBytes(OP_CALL, argCount);
 }
 
-static void unary() {
+static void unary(bool canAssign) {
   TokenType operatorType = parser.previous.type;
   parsePrecedence(PREC_UNARY);
   switch (operatorType) {
@@ -419,7 +420,7 @@ static void unary() {
   }
 }
 
-static void binary() {
+static void binary(bool canAssign) {
   TokenType operatorType = parser.previous.type;
   ParseRule* rule = getRule(operatorType);
   parsePrecedence((Precedence)(rule->precedence + 1));
@@ -439,7 +440,7 @@ static void binary() {
   }
 }
 
-static void literal() {
+static void literal(bool canAssign) {
   switch (parser.previous.type) {
     case TOKEN_FALSE: emitByte(OP_FALSE); break;
     case TOKEN_NIL:   emitByte(OP_NIL); break;
@@ -495,12 +496,23 @@ static ParseRule* getRule(TokenType type) { return &rules[type]; }
 static void parsePrecedence(Precedence precedence) {
   advance();
   ParseFn prefixRule = getRule(parser.previous.type)->prefix;
-  if (prefixRule == NULL) { error("Expect expression."); return; }
-  prefixRule();
+  if (prefixRule == NULL) {
+    error("Expect expression.");
+    return;
+  }
+  bool canAssign = precedence <= PREC_ASSIGNMENT;
+  
+  prefixRule(canAssign); 
+
   while (precedence <= getRule(parser.current.type)->precedence) {
     advance();
     ParseFn infixRule = getRule(parser.previous.type)->infix;
-    infixRule();
+    
+    infixRule(canAssign); 
+  }
+
+  if (canAssign && match(TOKEN_EQUAL)) {
+    error("Invalid assignment target.");
   }
 }
 
