@@ -458,5 +458,5 @@ Please open an issue to discuss major changes before submitting a pull request.
 ---
 
 ## Author
-*Aadesh Chaudhari  
-@aadesh006*
+**Aadesh Chaudhari**  
+GitHub: [@aadesh006](https://github.com/aadesh006)
