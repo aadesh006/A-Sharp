@@ -81,8 +81,22 @@ ObjUpvalue* newUpvalue(Value* slot) {
 }
 
 ObjClosure* newClosure(ObjFunction* function) {
+  //Allocate the array of upvalue pointers based on the function's count
+  ObjUpvalue** upvalues = ALLOCATE(ObjUpvalue*, function->upvalueCount);
+  
+  //Initialize them all to NULL
+  for (int i = 0; i < function->upvalueCount; i++) {
+    upvalues[i] = NULL;
+  }
+
+  //Create the closure object
   ObjClosure* closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
   closure->function = function;
+  
+  //Attach the array and the count
+  closure->upvalues = upvalues; 
+  closure->upvalueCount = function->upvalueCount;
+  
   return closure;
 }
 
