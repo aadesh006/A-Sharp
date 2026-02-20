@@ -24,6 +24,7 @@ static Obj* allocateObject(size_t size, ObjType type) {
   
   // --- CRITICAL INITIALIZATION ---
   object->type = type; 
+  object->isMarked = false;
   object->next = vm.objects;
   vm.objects = object;
   
