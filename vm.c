@@ -421,6 +421,28 @@ static InterpretResult run() {
 
       case OP_GET_UPVALUE: {
         uint8_t slot = READ_BYTE();
+        
+        // DIAGNOSTICS
+        if (frame->closure == NULL) {
+            printf("\n[FATAL ERROR] frame->closure is NULL!\n");
+            printf("FIX: Go to the 'call()' function in vm.c and make sure you added 'frame->closure = closure;'\n\n");
+            exit(1);
+        }
+        if (frame->closure->upvalues == NULL) {
+            printf("\n[FATAL ERROR] upvalues array is NULL!\n");
+            printf("FIX: Check your 'newClosure()' function in object.c\n\n");
+            exit(1);
+        }
+        if (frame->closure->upvalues[slot] == NULL) {
+            printf("\n[FATAL ERROR] upvalues[%d] is NULL!\n", slot);
+            printf("FIX: The OP_CLOSURE loop didn't save the captured variable properly.\n\n");
+            exit(1);
+        }
+        if (frame->closure->upvalues[slot]->location == NULL) {
+            printf("\n[FATAL ERROR] upvalue location is NULL!\n\n");
+            exit(1);
+        }
+
         push(*frame->closure->upvalues[slot]->location);
         break;
       }
