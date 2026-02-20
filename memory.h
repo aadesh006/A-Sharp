@@ -25,5 +25,8 @@ void freeObjects();
 //Function
 void* reallocate(void*pointer, size_t oldSize, size_t newSize);
 
+//Garbage Collector
+void collectGarbage();
+
 #endif
 
