@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "memory.h"
 #include "vm.h"
 #include "object.h"
@@ -57,4 +58,15 @@ void freeObjects() {
     freeObject(object);
     object = next;
   }
+}
+
+void collectGarbage() {
+#ifdef DEBUG_LOG_GC
+  printf("-- gc begin\n");
+#endif
+
+
+#ifdef DEBUG_LOG_GC
+  printf("-- gc end\n");
+#endif
 }
