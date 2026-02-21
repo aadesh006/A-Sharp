@@ -4,8 +4,6 @@
 #include "common.h"
 #include "value.h"
 
-void tableRemoveWhite(Table* table);
-
 //A key-value pair
 typedef struct{
     ObjString* key;
@@ -28,5 +26,6 @@ bool tableSet(Table* table, ObjString* key, Value value);
 bool tableDelete(Table* table, ObjString* key);
 void tabelAddAll(Table* from, Table* to);
 ObjString* tableFindString(Table* table, const char* chars, int length, uint32_t hash);
+void tableRemoveWhite(Table* table);
 
 #endif
