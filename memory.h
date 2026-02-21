@@ -2,6 +2,7 @@
 #define asharp_memory_h
 
 #include "common.h"
+#include "object.h"
 
 //Calculate the new size
 #define GROW_CAPACITY(capacity) \
