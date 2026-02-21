@@ -27,6 +27,10 @@ typedef struct {
   Table globals;
   Table strings;
   ObjUpvalue* openUpvalues;
+
+  int grayCount;
+  int grayCapacity;
+  Obj** grayStack; // Array of pointers to Gray objects
   
   size_t bytesAllocated;
   size_t nextGC;
