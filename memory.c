@@ -72,8 +72,17 @@ void markObject(Obj* object) {
 #endif
 
   object->isMarked = true;
-  
-  // No Code yet
+
+  // Add it to the Gray Stack
+  if (vm.grayCapacity < vm.grayCount + 1) {
+    vm.grayCapacity = GROW_CAPACITY(vm.grayCapacity);
+    //use system realloc here so GC doesn't trigger itself!
+    vm.grayStack = (Obj**)realloc(vm.grayStack, sizeof(Obj*) * vm.grayCapacity);
+    
+    if (vm.grayStack == NULL) exit(1); // Crash if we literally run out of RAM
+  }
+
+  vm.grayStack[vm.grayCount++] = object;
 }
 
 void markValue(Value value) {
