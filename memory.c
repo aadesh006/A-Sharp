@@ -72,8 +72,17 @@ void markObject(Obj* object) {
 #endif
 
   object->isMarked = true;
-  
-  // No Code yet
+
+  // Add it to the Gray Stack
+  if (vm.grayCapacity < vm.grayCount + 1) {
+    vm.grayCapacity = GROW_CAPACITY(vm.grayCapacity);
+    //use system realloc here so GC doesn't trigger itself!
+    vm.grayStack = (Obj**)realloc(vm.grayStack, sizeof(Obj*) * vm.grayCapacity);
+    
+    if (vm.grayStack == NULL) exit(1); // Crash if we literally run out of RAM
+  }
+
+  vm.grayStack[vm.grayCount++] = object;
 }
 
 void markValue(Value value) {
@@ -96,15 +105,58 @@ static void markRoots() {
   }
 }
 
+static void markArray(ValueArray* array) {
+  for (int i = 0; i < array->count; i++) {
+    markValue(array->values[i]);
+  }
+}
+
+static void blackenObject(Obj* object) {
+#ifdef DEBUG_LOG_GC
+  printf("%p blacken ", (void*)object);
+  printValue(OBJ_VAL(object));
+  printf("\n");
+#endif
+
+  switch (object->type) {
+    case OBJ_CLOSURE: {
+      ObjClosure* closure = (ObjClosure*)object;
+      markObject((Obj*)closure->function); // Mark the wrapped function
+      for (int i = 0; i < closure->upvalueCount; i++) {
+        markObject((Obj*)closure->upvalues[i]); // Mark the upvalues
+      }
+      break;
+    }
+    case OBJ_FUNCTION: {
+      ObjFunction* function = (ObjFunction*)object;
+      markObject((Obj*)function->name);
+      markArray(&function->chunk.constants); // Mark everything in the constant pool!
+      break;
+    }
+    case OBJ_UPVALUE:
+      markValue(((ObjUpvalue*)object)->closed);
+      break;
+    case OBJ_NATIVE:
+    case OBJ_STRING:
+      break; // Strings and Native functions don't contain other objects.
+  }
+}
+
+static void traceReferences() {
+  while (vm.grayCount > 0) {
+    Obj* object = vm.grayStack[--vm.grayCount];
+    blackenObject(object);
+  }
+}
+
 void collectGarbage() {
 #ifdef DEBUG_LOG_GC
   printf("-- gc begin\n");
 #endif
 
-  // Phase 1: Mark the roots
   markRoots();
+  traceReferences();
 
-  // Phase 2: Trace References
   // Phase 3: Sweep
 
 #ifdef DEBUG_LOG_GC
