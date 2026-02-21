@@ -3,6 +3,7 @@
 #include "memory.h"
 #include "vm.h"
 #include "object.h"
+#include "compiler.h"
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize){
 //CASE 1: Delete the Memory (newSize is 0)
