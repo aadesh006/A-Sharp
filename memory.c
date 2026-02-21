@@ -81,6 +81,20 @@ void markValue(Value value) {
   if (IS_OBJ(value)) markObject(AS_OBJ(value));
 }
 
+static void markRoots() {
+  for (Value* slot = vm.stack; slot < vm.stackTop; slot++) {
+    markValue(*slot);
+  }
+
+  for (int i = 0; i < vm.frameCount; i++) {
+    markObject((Obj*)vm.frames[i].closure);
+  }
+
+  for (ObjUpvalue* upvalue = vm.openUpvalues; upvalue != NULL; upvalue = upvalue->next) {
+    markObject((Obj*)upvalue);
+  }
+}
+
 void collectGarbage() {
 #ifdef DEBUG_LOG_GC
   printf("-- gc begin\n");
