@@ -4,6 +4,7 @@
 #include "vm.h"
 #include "object.h"
 #include "compiler.h"
+#include "table.h"
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize){
 //CASE 1: Delete the Memory (newSize is 0)
@@ -149,17 +150,55 @@ static void traceReferences() {
   }
 }
 
+static void sweep() {
+  Obj* previous = NULL;
+  Obj* object = vm.objects;
+
+  while (object != NULL) {
+    if (object->isMarked) {
+
+      object->isMarked = false;
+      previous = object;
+      object = object->next;
+    } 
+    
+    else {
+      Obj* unreached = object;
+      object = object->next;
+      
+      if (previous != NULL) {
+        previous->next = object;
+      } else {
+        vm.objects = object;
+      }
+
+      freeObject(unreached);
+    }
+  }
+}
+
 void collectGarbage() {
 #ifdef DEBUG_LOG_GC
   printf("-- gc begin\n");
+  size_t before = vm.bytesAllocated;
 #endif
 
+  // Phase 1: Paint the roots
   markRoots();
+  
+  // Phase 2: Paint the children
   traceReferences();
-
-  // Phase 3: Sweep
+  
+  // Phase 2.5: Clean the string table of unpainted strings
+  tableRemoveWhite(&vm.strings);
+  
+  // Phase 3: Destroy the unpainted objects
+  sweep();
 
 #ifdef DEBUG_LOG_GC
   printf("-- gc end\n");
+  printf("   collected %zu bytes (from %zu to %zu) next at %zu\n",
+         before - vm.bytesAllocated, before, vm.bytesAllocated,
+         vm.nextGC);
 #endif
 }
