@@ -60,6 +60,27 @@ void freeObjects() {
   }
 }
 
+void markObject(Obj* object) {
+  if (object == NULL) return;
+  if (object->isMarked) return;
+
+#ifdef DEBUG_LOG_GC
+  printf("%p mark ", (void*)object);
+  printValue(OBJ_VAL(object));
+  printf("\n");
+#endif
+
+  object->isMarked = true;
+  
+  // No Code yet
+}
+
+void markValue(Value value) {
+  // Only heap-allocated objects need garbage collection!
+  // Numbers, Booleans, and Nil live directly on the stack, so ignore them.
+  if (IS_OBJ(value)) markObject(AS_OBJ(value));
+}
+
 void collectGarbage() {
 #ifdef DEBUG_LOG_GC
   printf("-- gc begin\n");
