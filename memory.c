@@ -100,6 +100,11 @@ void collectGarbage() {
   printf("-- gc begin\n");
 #endif
 
+  // Phase 1: Mark the roots
+  markRoots();
+
+  // Phase 2: Trace References
+  // Phase 3: Sweep
 
 #ifdef DEBUG_LOG_GC
   printf("-- gc end\n");
