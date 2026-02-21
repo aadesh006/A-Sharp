@@ -3,6 +3,7 @@
 #include "memory.h"
 #include "vm.h"
 #include "object.h"
+#include "compiler.h"
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize){
 //CASE 1: Delete the Memory (newSize is 0)
@@ -60,11 +61,51 @@ void freeObjects() {
   }
 }
 
+void markObject(Obj* object) {
+  if (object == NULL) return;
+  if (object->isMarked) return;
+
+#ifdef DEBUG_LOG_GC
+  printf("%p mark ", (void*)object);
+  printValue(OBJ_VAL(object));
+  printf("\n");
+#endif
+
+  object->isMarked = true;
+  
+  // No Code yet
+}
+
+void markValue(Value value) {
+  // Only heap-allocated objects need garbage collection!
+  // Numbers, Booleans, and Nil live directly on the stack, so ignore them.
+  if (IS_OBJ(value)) markObject(AS_OBJ(value));
+}
+
+static void markRoots() {
+  for (Value* slot = vm.stack; slot < vm.stackTop; slot++) {
+    markValue(*slot);
+  }
+
+  for (int i = 0; i < vm.frameCount; i++) {
+    markObject((Obj*)vm.frames[i].closure);
+  }
+
+  for (ObjUpvalue* upvalue = vm.openUpvalues; upvalue != NULL; upvalue = upvalue->next) {
+    markObject((Obj*)upvalue);
+  }
+}
+
 void collectGarbage() {
 #ifdef DEBUG_LOG_GC
   printf("-- gc begin\n");
 #endif
 
+  // Phase 1: Mark the roots
+  markRoots();
+
+  // Phase 2: Trace References
+  // Phase 3: Sweep
 
 #ifdef DEBUG_LOG_GC
   printf("-- gc end\n");

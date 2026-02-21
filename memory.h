@@ -2,6 +2,7 @@
 #define asharp_memory_h
 
 #include "common.h"
+#include "object.h"
 
 //Calculate the new size
 #define GROW_CAPACITY(capacity) \
@@ -27,6 +28,8 @@ void* reallocate(void*pointer, size_t oldSize, size_t newSize);
 
 //Garbage Collector
 void collectGarbage();
+void markObject(Obj* object);
+void markValue(Value value);
 
 #endif
 
