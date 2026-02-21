@@ -4,6 +4,8 @@
 #include "common.h"
 #include "value.h"
 
+void tableRemoveWhite(Table* table);
+
 //A key-value pair
 typedef struct{
     ObjString* key;
