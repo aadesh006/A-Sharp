@@ -98,6 +98,9 @@ void initVM() {
   vm.grayCapacity = 0;
   vm.grayStack = NULL;
 
+  vm.bytesAllocated = 0;
+  vm.nextGC = 1024 * 1024;
+
   defineNative("clock", clockNative); //Supporting time
   defineNative("sqrt", sqrtNative); //Supporting Square root
   defineNative("floor", floorNative); // Supporting floor op

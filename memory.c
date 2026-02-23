@@ -6,20 +6,30 @@
 #include "compiler.h"
 #include "table.h"
 
-void* reallocate(void* pointer, size_t oldSize, size_t newSize){
-//CASE 1: Delete the Memory (newSize is 0)
-    if(newSize==0){
-        free(pointer);
-        return NULL;
+#define GC_HEAP_GROW_FACTOR 2
+
+void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
+  vm.bytesAllocated += newSize - oldSize;
+
+  if (newSize > oldSize) {
+#ifdef DEBUG_STRESS_GC
+    collectGarbage();
+#endif
+
+    if (vm.bytesAllocated > vm.nextGC) {
+      collectGarbage();
     }
+  }
 
-//Case 2: Grow or Shrink the memory
-void* result = realloc(pointer, newSize);
+  //ask the OS for memory (or free it)
+  if (newSize == 0) {
+    free(pointer);
+    return NULL;
+  }
 
-//Check for overflow in RAM
-if(result == NULL) exit(1);
-
-return result;
+  void* result = realloc(pointer, newSize);
+  if (result == NULL) exit(1);
+  return result;
 }
 
 void freeObject(Obj* object) {
@@ -194,6 +204,8 @@ void collectGarbage() {
   
   // Phase 3: Destroy the unpainted objects
   sweep();
+
+  vm.nextGC = vm.bytesAllocated * GC_HEAP_GROW_FACTOR;
 
 #ifdef DEBUG_LOG_GC
   printf("-- gc end\n");
