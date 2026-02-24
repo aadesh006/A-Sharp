@@ -2,7 +2,7 @@
 
 A bytecode virtual machine and interpreter for the A-Sharp programming language, written in C. This implementation follows the architecture described in Part III of **Crafting Interpreters** by Robert Nystrom.
 
-**Project Status:** Active development: Core features including control flow, scoping, functions, native functions, and user input are fully functional.
+**Project Status:** Active development — core features including control flow, scoping, closures, functions, native functions, user input, and garbage collection are fully functional.
 
 ---
 
@@ -12,10 +12,12 @@ A-Sharp is a dynamically-typed scripting language with a stack-based bytecode VM
 
 - **Clean syntax** for variables, expressions, and control flow
 - **Lexical scoping** with local and global variables
+- **First-class functions and closures** with upvalue capture
 - **User-defined functions** with return statements
 - **Native functions** for common operations
 - **User input** capabilities for interactive programs
 - **Interactive REPL** with line editing and command history
+- **Tri-color mark-and-sweep garbage collector** for automatic memory management
 - **Efficient bytecode execution** via a custom virtual machine
 
 ---
@@ -23,28 +25,34 @@ A-Sharp is a dynamically-typed scripting language with a stack-based bytecode VM
 ## Features
 
 ### Implemented
+
 - **Lexical Analysis**: Tokenizes source code into a stream of tokens
 - **Compilation**: Pratt parser with single-pass bytecode generation
 - **Virtual Machine**: Stack-based bytecode interpreter with optimized dispatch
 - **Data Types**: Numbers, strings, booleans, and nil
 - **Variables**: Local and global variables with lexical scoping
 - **Operators**: Arithmetic (`+`, `-`, `*`, `/`), comparison (`<`, `>`, `<=`, `>=`), equality (`==`, `!=`), logical (`and`, `or`, `not`)
-- **Control Flow**: 
+- **Control Flow**:
   - `if`/`else` statements for conditional execution
   - `while` loops for iteration
   - `for` loops with C-style syntax
 - **Functions**: User-defined functions with parameters and `return` statements
+- **Closures**: First-class functions with full upvalue capture and promotion to the heap when variables go out of scope
+- **Garbage Collection**: Tri-color mark-and-sweep GC with dynamic heap growth thresholds
+- **String Interning**: All strings are deduplicated in a global hash table for efficient equality checks and memory usage
 - **Native Functions**: Built-in functions including:
-  - `clock()` - Returns current time in seconds since epoch
-  - `sqrt(n)` - Calculates square root of a number
-  - `floor(n)` - Returns largest integer less than or equal to a number
-- **I/O**: 
+  - `clock()` — Returns current time in seconds since epoch
+  - `sqrt(n)` — Calculates square root of a number
+  - `floor(n)` — Returns the largest integer less than or equal to a number
+- **I/O**:
   - `print` statement for output
   - `input(prompt)` function for reading user input
 - **REPL**: Interactive shell with readline support
 
 ### Upcoming
+
 - Classes and objects
+- Inheritance
 - Standard library expansion
 - Module system
 
@@ -76,7 +84,7 @@ export LDFLAGS="-L/opt/homebrew/opt/readline/lib"
 
 ```bash
 # Clone the repository
-git clone <https://github.com/aadesh006/A-Sharp.git>
+git clone https://github.com/aadesh006/A-Sharp.git
 cd A-Sharp
 
 # Build the interpreter
@@ -162,6 +170,23 @@ fun fib(n) {
 print fib(10);  // 55
 ```
 
+**Closures:**
+```javascript
+fun makeCounter() {
+  var count = 0;
+  fun increment() {
+    count = count + 1;
+    return count;
+  }
+  return increment;
+}
+
+var counter = makeCounter();
+print counter();  // 1
+print counter();  // 2
+print counter();  // 3
+```
+
 **Native Functions:**
 ```javascript
 // Get current time
@@ -170,10 +195,10 @@ print "Start time: " + startTime;
 
 // Mathematical operations
 print "Square root of 64 is:";
-print sqrt(64);  // 8
+print sqrt(64);   // 8
 
 print "Floor of 5.95 is:";
-print floor(5.95);  // 5
+print floor(5.95); // 5
 ```
 
 **User Input:**
@@ -183,25 +208,12 @@ print "Calculate Hypotenuse";
 var a = input("Enter side A: ");
 var b = input("Enter side B: ");
 
-// Note: input() returns strings, so mathematical operations
-// work with numeric string values
+// Note: input() returns strings; numeric coercion happens automatically
+// in arithmetic expressions
 var sumOfSquares = (a * a) + (b * b);
 var hypotenuse = sqrt(sumOfSquares);
 
 print "The hypotenuse is: " + hypotenuse;
-```
-
-**Interactive Program Example:**
-```javascript
-var name = input("What is your name? ");
-print "Hello, " + name + "!";
-
-var age = input("How old are you? ");
-if (age >= 18) {
-  print "You are an adult.";
-} else {
-  print "You are a minor.";
-}
 ```
 
 **Conditional Statements:**
@@ -253,7 +265,6 @@ More examples can be found in `test.as`.
 ### `clock()`
 Returns the current time in seconds since the Unix epoch (January 1, 1970).
 
-**Usage:**
 ```javascript
 var start = clock();
 // ... some code ...
@@ -262,14 +273,8 @@ print "Elapsed time: " + (end - start) + " seconds";
 ```
 
 ### `sqrt(n)`
-Returns the square root of a number.
+Returns the square root of a number. `n` must be non-negative.
 
-**Parameters:**
-- `n` - A number (must be non-negative)
-
-**Returns:** The square root of `n`
-
-**Usage:**
 ```javascript
 print sqrt(16);    // 4
 print sqrt(2);     // 1.414...
@@ -277,14 +282,8 @@ print sqrt(100);   // 10
 ```
 
 ### `floor(n)`
-Returns the largest integer less than or equal to a given number.
+Returns the largest integer less than or equal to `n`.
 
-**Parameters:**
-- `n` - A number
-
-**Returns:** The floor of `n`
-
-**Usage:**
 ```javascript
 print floor(5.95);   // 5
 print floor(5.05);   // 5
@@ -292,149 +291,137 @@ print floor(-2.3);   // -3
 ```
 
 ### `input(prompt)`
-Reads a line of text from the user.
+Displays `prompt` and reads a line of text from the user. Returns a string.
 
-**Parameters:**
-- `prompt` - A string to display before reading input
-
-**Returns:** A string containing the user's input
-
-**Usage:**
 ```javascript
 var name = input("Enter your name: ");
 print "Hello, " + name;
-
-var choice = input("Choose an option (1-3): ");
 ```
 
-**Note:** Currently, `input()` returns strings. For numeric operations, the values will be coerced automatically when used in arithmetic expressions.
+**Note:** `input()` returns strings. Values are automatically coerced to numbers when used in arithmetic expressions.
 
 ---
 
 ## Project Structure
 
 ```
-asharp/
-├── main.c              # Entry point and CLI interface
+A-Sharp/
+├── main.c              # Entry point, REPL, and CLI interface
 ├── scanner.{c,h}       # Lexical analyzer (tokenizer)
-├── compiler.{c,h}      # Parser and bytecode compiler
-├── vm.{c,h}            # Virtual machine and bytecode interpreter
-├── chunk.{c,h}         # Bytecode chunk data structure
+├── compiler.{c,h}      # Pratt parser and single-pass bytecode compiler
+├── vm.{c,h}            # Stack-based virtual machine and bytecode interpreter
+├── chunk.{c,h}         # Bytecode chunk data structure and opcode definitions
 ├── value.{c,h}         # Runtime value representation
-├── object.{c,h}        # Heap-allocated objects (strings, functions)
-├── memory.{c,h}        # Memory management and garbage collection helpers
-├── table.{c,h}         # Hash table for global variables
+├── object.{c,h}        # Heap-allocated objects (strings, functions, closures, upvalues)
+├── memory.{c,h}        # Memory management and mark-and-sweep garbage collector
+├── table.{c,h}         # Open-addressing hash table (globals, string interning)
 ├── debug.{c,h}         # Bytecode disassembler and debugging utilities
 ├── Makefile            # Build configuration
-├── test.as             # Sample programs
-└── build/              # Build artifacts (generated)
+└── test.as             # Sample programs
 ```
 
 ### Architecture Overview
 
-1. **Scanner** (`scanner.c/h`) — Converts source text into tokens
-2. **Compiler** (`compiler.c/h`) — Parses tokens using Pratt parsing and emits bytecode
-3. **Chunk** (`chunk.c/h`) — Stores bytecode instructions and constants
-4. **VM** (`vm.c/h`) — Executes bytecode on a stack-based virtual machine
-5. **Object** (`object.c/h`) — Manages heap-allocated runtime objects
-6. **Memory** (`memory.c/h`) — Handles dynamic allocation and garbage collection
+1. **Scanner** (`scanner.c/h`) — Converts source text into a flat stream of tokens
+2. **Compiler** (`compiler.c/h`) — Parses tokens using Pratt parsing and emits bytecode directly (no AST)
+3. **Chunk** (`chunk.c/h`) — Stores bytecode instructions, a constant pool, and per-instruction line numbers
+4. **VM** (`vm.c/h`) — Executes bytecode on a stack-based virtual machine with up to 64 call frames
+5. **Object** (`object.c/h`) — Manages heap-allocated runtime objects: strings, functions, closures, and upvalues
+6. **Memory** (`memory.c/h`) — Handles dynamic allocation and the tri-color mark-and-sweep GC
 
 ---
 
 ## Development
 
-### Developer Notes
+### Architecture Principles
 
-**Architecture Principles:**
-- The compiler is a **single-pass compiler** that emits bytecode directly without building an AST. This makes compilation fast but means some optimizations aren't possible.
-- The VM uses a **stack-based architecture** rather than register-based. All operations push/pop values from the stack.
-- **Hash tables** (`table.c/h`) are used for global variable lookup with string interning for efficiency.
-- Memory management currently uses manual allocation; a garbage collector is planned for future releases.
+- **Single-pass compiler** — Bytecode is emitted directly during parsing without building an AST, keeping compilation fast.
+- **Stack-based VM** — All operations push/pop values from a contiguous value stack. Call frames hold a pointer into this stack as their local window.
+- **Closures via upvalues** — Captured variables live on the stack while their enclosing function is active, then are "closed over" and moved to the heap when that scope exits (`OP_CLOSE_UPVALUE`).
+- **Tri-color mark-and-sweep GC** — The garbage collector maintains a gray worklist. `bytesAllocated` is tracked against a `nextGC` threshold to trigger collection automatically.
+- **String interning** — All strings are stored in a global hash table (`vm.strings`); equality can therefore be checked with pointer comparison.
+- **Hash tables** (`table.c/h`) — Used for both global variable lookup and string interning, with open addressing and a load factor of 75%.
 
-**Code Organization:**
-- Each module has a clear separation between interface (`.h`) and implementation (`.c`).
-- The `Chunk` structure holds both bytecode instructions and a constant pool for literals.
-- String objects are heap-allocated and interned for efficient comparison and memory usage.
-- The compiler uses **Pratt parsing** (precedence climbing) for expression parsing, which elegantly handles operator precedence.
+### Bytecode Opcodes
 
-**Important Implementation Details:**
-- Local variables are resolved at compile-time and accessed by stack offset (no runtime lookup).
-- Global variables use runtime hash table lookup by name.
-- Control flow uses bytecode jump instructions with backpatching for forward jumps.
-- The REPL runs in the same VM instance, maintaining global state between statements.
-- **Native functions** are registered at VM initialization and stored in the global variable table.
-- User-defined functions are compiled into function objects containing their own bytecode chunks.
-
-**Performance Considerations:**
-- Bytecode is designed to be compact; most instructions are single-byte opcodes.
-- The VM's instruction dispatch uses a computed goto (if supported) or switch statement for fast execution.
-- Constants are stored in a separate array and referenced by index to keep bytecode small.
-- Native functions bypass the bytecode interpreter for direct execution of C code.
+| Opcode | Description |
+|---|---|
+| `OP_CONSTANT` | Push a constant from the constant pool |
+| `OP_NIL` / `OP_TRUE` / `OP_FALSE` | Push literal values |
+| `OP_POP` | Discard the top of the stack |
+| `OP_GET_LOCAL` / `OP_SET_LOCAL` | Read/write a local variable by stack slot |
+| `OP_GET_GLOBAL` / `OP_SET_GLOBAL` / `OP_DEFINE_GLOBAL` | Global variable access via hash table |
+| `OP_GET_UPVALUE` / `OP_SET_UPVALUE` / `OP_CLOSE_UPVALUE` | Closure upvalue operations |
+| `OP_CLOSURE` | Wrap a function in a closure object and capture upvalues |
+| `OP_JUMP` / `OP_JUMP_IF_FALSE` / `OP_LOOP` | Control flow with 16-bit offsets |
+| `OP_CALL` | Invoke a function or native |
+| `OP_RETURN` | Return from a function, closing any open upvalues |
+| `OP_ADD` / `OP_SUBTRACT` / `OP_MULTIPLY` / `OP_DIVIDE` | Arithmetic |
+| `OP_EQUAL` / `OP_GREATER` / `OP_LESS` | Comparison |
+| `OP_NOT` / `OP_NEGATE` | Unary operations |
+| `OP_PRINT` | Print top-of-stack value |
 
 ### Adding New Features
 
-The codebase structure:
+1. **Add tokens** in `scanner.h` / `scanner.c` if new keywords or symbols are needed
+2. **Extend the parser** in `compiler.c` with Pratt parse rules
+3. **Emit bytecode** from the relevant parse function
+4. **Add an opcode** to `chunk.h` and handle it in `vm.c`
 
-1. **Add tokens** in `scanner.c` if new keywords are needed
-2. **Extend the parser** in `compiler.c` with parsing rules
-3. **Emit bytecode** for the new feature
-4. **Handle execution** in the VM (`vm.c`)
-
-**Example workflow for adding a new operator:**
+**Example — adding a modulo operator:**
 ```c
-// 1. Add token type in scanner.h
+// 1. scanner.h
 TOKEN_MODULO,
 
-// 2. Add to scanner.c switch statement
+// 2. scanner.c
 case '%': addToken(TOKEN_MODULO); break;
 
-// 3. Add parse rule in compiler.c
+// 3. compiler.c parse table
 [TOKEN_MODULO] = {NULL, binary, PREC_FACTOR},
 
-// 4. Handle in binary() function to emit OP_MODULO
+// 4. chunk.h
+OP_MODULO,
 
-// 5. Add VM case in vm.c
-case OP_MODULO: BINARY_OP(%, NUMBER_VAL); break;
+// 5. vm.c
+case OP_MODULO: BINARY_OP(NUMBER_VAL, %); break;
 ```
 
 **Adding a new native function:**
 ```c
-// 1. Define the C function in vm.c
-static Value myNative(int argCount, Value* args) {
-    // Implementation
-    return NUMBER_VAL(result);
+// 1. Define in vm.c
+static Value absNative(int argCount, Value* args) {
+  double n = AS_NUMBER(args[0]);
+  return NUMBER_VAL(n < 0 ? -n : n);
 }
 
-// 2. Register it in initVM()
-defineNative("myFunction", myNative);
+// 2. Register in initVM()
+defineNative("abs", absNative);
 
-// 3. Use it in A-Sharp code
-var result = myFunction(arg1, arg2);
+// 3. Use in A-Sharp
+print abs(-42);  // 42
 ```
 
 ### Debugging
 
-Use the built-in disassembler to inspect generated bytecode:
+Enable execution tracing by uncommenting in `common.h`:
+```c
+#define DEBUG_TRACE_EXECUTION   // prints stack state + instruction before each op
+#define DEBUG_PRINT_CODE        // disassembles every compiled chunk
+```
 
+Or use the disassembler directly:
 ```c
 #include "debug.h"
-
 disassembleChunk(&chunk, "my chunk");
 ```
 
-Compile with debug flags:
+Build with debug symbols:
 ```bash
 make CFLAGS="-g -O0"
 ```
 
-**Debugging Tips:**
-- Enable trace execution in `vm.c` by uncommenting `#define DEBUG_TRACE_EXECUTION` to see each instruction as it executes.
-- Use `#define DEBUG_PRINT_CODE` in `compiler.c` to automatically disassemble compiled chunks.
-- The debugger prints the stack state before each instruction when tracing is enabled.
-
 ### Testing
 
-Run the test suite:
 ```bash
 ./asharp test.as
 ```
@@ -445,12 +432,10 @@ Run the test suite:
 
 Contributions are welcome! Areas for improvement:
 
-- Additional native functions (string manipulation, file I/O, etc.)
-- Type conversion functions (parseNumber, toString, etc.)
-- First-class functions and closures
+- Additional native functions (string manipulation, file I/O, type conversion)
 - Object-oriented features (classes, inheritance)
 - Standard library expansion
-- Error messages and diagnostics
+- Improved error messages and diagnostics
 - Performance optimizations
 
 Please open an issue to discuss major changes before submitting a pull request.
@@ -458,5 +443,6 @@ Please open an issue to discuss major changes before submitting a pull request.
 ---
 
 ## Author
+
 **Aadesh Chaudhari**  
 GitHub: [@aadesh006](https://github.com/aadesh006)
