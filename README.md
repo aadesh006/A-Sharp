@@ -96,6 +96,23 @@ make clean && make
 
 The compiled executable `asharp` will be created in the project root.
 
+## Installation as `apt` Package
+
+### Debian / Ubuntu (APT Repository)
+A-Sharp is distributed as a pre-compiled `amd64` Debian package (`.deb`). The package is hosted via a custom APT repository on GitHub Pages.
+
+To install the A-Sharp virtual machine natively on your system, execute the following commands:
+
+```bash
+# 1. Add the A-Sharp repository to your APT sources list
+echo "deb [trusted=yes] [https://aadesh006.github.io/A-Sharp/](https://aadesh006.github.io/A-Sharp/) ./" | sudo tee /etc/apt/sources.list.d/asharp.list
+
+# 2. Update the local package index
+sudo apt update
+
+# 3. Install the A-Sharp binary
+sudo apt install asharp
+```
 ---
 
 ## Usage
