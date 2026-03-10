@@ -16,6 +16,7 @@ mkdir -p dist/${PKG_NAME}/DEBIAN
 # 3. Copy the binary and metadata
 cp asharp dist/${PKG_NAME}/usr/bin/
 cp debian/control dist/${PKG_NAME}/DEBIAN/
+cp index.html dist/
 
 # 4. Strip debug symbols and set execution permissions
 strip dist/${PKG_NAME}/usr/bin/asharp
