@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A-Sharp (A#) Virtual Machine</title>
+    <style>
+        :root {
+            --bg-base: #0d1117;
+            --bg-surface: #161b22;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --border-color: #30363d;
+            --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin: 0 0 10px 0;
+            color: #ffffff;
+            letter-spacing: -1px;
+        }
+
+        .tagline {
+            font-size: 1.2em;
+            color: var(--text-muted);
+            font-weight: 300;
+        }
+
+        h2 {
+            color: #ffffff;
+            margin-top: 40px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            font-size: 1.5em;
+        }
+
+        h3 {
+            color: var(--text-main);
+            margin-top: 25px;
+        }
+
+        p, li {
+            color: var(--text-muted);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+        }
+
+        .card h3 { margin-top: 0; color: var(--accent-blue); }
+
+        pre {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        code {
+            font-family: var(--font-mono);
+            background-color: rgba(110, 118, 129, 0.4);
+            padding: 0.2em 0.4em;
+            border-radius: 6px;
+            font-size: 85%;
+            color: var(--text-main);
+        }
+
+        pre code { background-color: transparent; padding: 0; }
+
+        .syntax-keyword { color: #ff7b72; }
+        .syntax-string { color: #a5d6ff; }
+        .syntax-number { color: #79c0ff; }
+        .syntax-comment { color: #8b949e; font-style: italic; }
+
+        a { color: var(--accent-blue); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .footer {
+            margin-top: 80px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 30px;
+            text-align: center;
+            font-size: 0.9em;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>A-Sharp (A#)</h1>
+            <div class="tagline">A high-performance, stack-based bytecode virtual machine written in strictly compliant C99.</div>
+        </header>
+
+        <h2>Architecture & Internal Subsystems</h2>
+        <div class="grid">
+            <div class="card">
+                <h3>Bytecode Execution Engine</h3>
+                <p>A-Sharp operates on a custom instruction set architecture. The single-pass compiler translates source text directly into dense, cache-friendly bytecode chunks, entirely bypassing abstract syntax tree (AST) generation. The VM executes this bytecode via a highly optimized, flat array stack, ensuring minimal pointer indirection and high instruction throughput.</p>
+            </div>
+            <div class="card">
+                <h3>Mark & Sweep Garbage Collector</h3>
+                <p>Memory safety is enforced via a dynamic, threshold-triggered garbage collector. The GC traverses the live object graph starting from root pointers (globals, stack frames, open upvalues), marking reachable allocations. It employs a tricolor abstraction (white, gray, black) to systematically sweep unreachable heap allocations, eliminating memory leaks during intense workloads.</p>
+            </div>
+            <div class="card">
+                <h3>Lexical Scoping & Closures</h3>
+                <p>The language supports first-class functions and deep lexical scoping. Local variables are resolved entirely at compile time and accessed via exact stack array indices (`OP_GET_LOCAL`). Variables captured by closures are seamlessly hoisted to the heap using an `ObjUpvalue` linked list, maintaining state even after the parent execution context is destroyed.</p>
+            </div>
+            <div class="card">
+                <h3>Dynamic String Interning</h3>
+                <p>To reduce heap fragmentation and accelerate execution, all strings in A-Sharp are automatically interned into a global hash table. This guarantees string uniqueness in memory, allowing the VM to evaluate string equality using O(1) pointer comparisons rather than O(n) character-by-character checks.</p>
+            </div>
+        </div>
+
+        <h2>Syntax Example: GC Stress Test</h2>
+        <p>This script demonstrates dynamic heap allocation and automatic garbage collection. The loop rapidly allocates 100,000 concatenated strings. Because `dump` goes out of scope per iteration, the GC intercepts the allocations dynamically, sweeping the unreferenced pointers before the heap threshold is exhausted.</p>
+        <pre><code><span class="syntax-keyword">var</span> a = <span class="syntax-string">"garbage"</span>;
+<span class="syntax-keyword">var</span> b = <span class="syntax-string">" collection"</span>;
+<span class="syntax-keyword">var</span> i = <span class="syntax-number">0</span>;
+
+<span class="syntax-keyword">while</span> (i &lt; <span class="syntax-number">100000</span>) {
+  <span class="syntax-comment">// Dynamically allocates a new string on the heap every loop iteration.</span>
+  <span class="syntax-keyword">var</span> dump = a + b; 
+  i = i + <span class="syntax-number">1</span>;
+}
+
+<span class="syntax-keyword">print</span> <span class="syntax-string">"Execution complete. GC prevented OOM crash."</span>;</code></pre>
+
+        <h2>System Installation</h2>
+        
+        <h3>Debian / Ubuntu (APT Package Manager)</h3>
+        <p>A-Sharp is distributed as a pre-compiled `amd64` `.deb` package. Execute the following commands to add the repository to your system and install the binary globally.</p>
+        <pre><code><span class="syntax-comment"># 1. Authorize the A-Sharp APT repository</span>
+echo "deb [trusted=yes] https://aadesh006.github.io/A-Sharp/ ./" | sudo tee /etc/apt/sources.list.d/asharp.list
+
+<span class="syntax-comment"># 2. Synchronize package indices</span>
+sudo apt update
+
+<span class="syntax-comment"># 3. Install the executable</span>
+sudo apt install asharp</code></pre>
+
+        <h3>macOS & Unsupported Linux Architectures (Build from Source)</h3>
+        <p>For systems operating on `arm64` (Apple Silicon) or distros outside the Debian family, the C toolchain is required to build the VM locally.</p>
+        <pre><code><span class="syntax-comment"># Clone the repository and compile</span>
+git clone https://github.com/aadesh006/A-Sharp.git
+cd A-Sharp
+make
+
+<span class="syntax-comment"># Execute the compiled binary</span>
+./asharp</code></pre>
+
+        <div class="footer">
+            <p>Licensed under the MIT License. Copyright &copy; 2026 Aadesh.</p>
+            <p><a href="https://github.com/aadesh006/A-Sharp">View Source Repository on GitHub</a></p>
+        </div>
+    </div>
+
+</body>
+</html>
