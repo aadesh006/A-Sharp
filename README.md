@@ -1,5 +1,5 @@
 # A-Sharp Programming Language
-![App Screenshot](assets/ASharp-Logo-Draft-1.png)
+![App Screenshot](assets/A-Sharp-Logo.png)
 
 A bytecode virtual machine and interpreter for the A-Sharp programming language, written in C. This implementation follows the architecture described in Part III of **Crafting Interpreters** by Robert Nystrom.
 
