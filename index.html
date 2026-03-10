@@ -1,204 +1,877 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A-Sharp (A#) Virtual Machine</title>
-    <style>
-        :root {
-            --bg-base: #0d1117;
-            --bg-surface: #161b22;
-            --text-main: #c9d1d9;
-            --text-muted: #8b949e;
-            --accent-blue: #58a6ff;
-            --accent-green: #3fb950;
-            --border-color: #30363d;
-            --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-        }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>A# — Bytecode VM & Language</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-        body {
-            font-family: var(--font-sans);
-            background-color: var(--bg-base);
-            color: var(--text-main);
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-        }
+:root{
+  --bg:       #0b0c0b;
+  --bg2:      #0f110f;
+  --bg3:      #131513;
+  --line:     #1e211e;
+  --line2:    #262926;
+  --dim:      #3d423d;
+  --mid:      #6b736b;
+  --text:     #c8d0c4;
+  --bright:   #e8f0e4;
+  --green:    #7ec87e;
+  --green2:   #a8e4a0;
+  --green-g:  rgba(126,200,126,.08);
+  --amber:    #d4a84b;
+  --amber-g:  rgba(212,168,75,.07);
+  --cyan:     #5ec4d4;
+  --purple:   #b07cd4;
+  --red:      #d46c6c;
+  --r:        2px;
+}
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 60px 20px;
-        }
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  font-size:14px;
+  line-height:1.7;
+  overflow-x:hidden;
+}
 
-        header {
-            text-align: center;
-            margin-bottom: 50px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 40px;
-        }
+body::after{
+  content:'';
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(
+    0deg,transparent,transparent 2px,
+    rgba(0,0,0,.055) 2px,rgba(0,0,0,.055) 4px
+  );
+  pointer-events:none;z-index:9000;
+}
 
-        h1 {
-            font-size: 3em;
-            margin: 0 0 10px 0;
-            color: #ffffff;
-            letter-spacing: -1px;
-        }
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:0}
 
-        .tagline {
-            font-size: 1.2em;
-            color: var(--text-muted);
-            font-weight: 300;
-        }
+/* NAV */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 2rem;height:48px;
+  background:var(--bg);
+  border-bottom:1px solid var(--line);
+}
+.nav-prompt{color:var(--green);font-size:.82rem;display:flex;align-items:center;gap:.4rem}
+.nav-prompt .path{color:var(--cyan)}
+.nav-prompt .sep{color:var(--dim)}
+.nav-links{display:flex;gap:0;list-style:none;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.nav-links a{
+  display:block;padding:.3rem .9rem;color:var(--mid);text-decoration:none;
+  font-size:.73rem;border-right:1px solid var(--line);transition:background .15s,color .15s;
+}
+.nav-links li:last-child a{border-right:none}
+.nav-links a:hover{background:var(--bg3);color:var(--text)}
+.nav-gh{
+  font-size:.73rem;color:var(--amber);border:1px solid rgba(212,168,75,.3);
+  padding:.3rem .9rem;border-radius:var(--r);text-decoration:none;transition:background .15s;
+}
+.nav-gh:hover{background:var(--amber-g)}
+.nav-mobile{display:none;background:none;border:none;cursor:pointer;flex-direction:column;gap:4px;padding:.3rem}
+.nav-mobile span{display:block;width:20px;height:1.5px;background:var(--mid)}
 
-        h2 {
-            color: #ffffff;
-            margin-top: 40px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-            font-size: 1.5em;
-        }
+/* HERO */
+.hero{
+  min-height:100vh;display:grid;grid-template-columns:1fr 1fr;
+  padding-top:48px;border-bottom:1px solid var(--line);
+}
+.hero-left{
+  padding:4.5rem 3rem 4.5rem clamp(1.5rem,5vw,4rem);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.hero-left::before{
+  content:'';position:absolute;inset:0;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),
+    linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:32px 32px;opacity:.3;pointer-events:none;
+}
+.hero-left > *{position:relative;z-index:1}
 
-        h3 {
-            color: var(--text-main);
-            margin-top: 25px;
-        }
+.status-bar{
+  display:inline-flex;align-items:center;gap:.7rem;
+  color:var(--mid);font-size:.7rem;margin-bottom:2.2rem;
+}
+.status-bar::before{content:'// ';color:var(--dim)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green);animation:blink 2.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 
-        p, li {
-            color: var(--text-muted);
-        }
+.hero-name{
+  font-size:clamp(3.5rem,9vw,7rem);font-weight:700;line-height:.95;
+  color:var(--green);letter-spacing:-.01em;
+  text-shadow:0 0 40px rgba(126,200,126,.25);
+  margin-bottom:.4rem;
+}
+.hero-name .sharp{color:var(--amber);text-shadow:0 0 30px rgba(212,168,75,.3)}
+.hero-sub-title{
+  font-size:.78rem;color:var(--mid);letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:2.5rem;
+}
 
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-top: 30px;
-        }
+.hero-desc{
+  font-size:.82rem;color:var(--mid);max-width:440px;
+  line-height:2;margin-bottom:2.8rem;font-weight:300;
+}
+.hero-desc .hl{color:var(--text);font-weight:400}
 
-        .card {
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 25px;
-        }
+.cmd-stack{display:flex;flex-direction:column;gap:.5rem;margin-bottom:2.8rem}
+.cmd-row{
+  display:flex;align-items:baseline;gap:.55rem;
+  background:var(--bg2);border:1px solid var(--line);
+  border-radius:var(--r);padding:.5rem .9rem;font-size:.75rem;
+}
+.ps{color:var(--green);user-select:none}
+.c-cmd{color:var(--bright)}
+.c-arg{color:var(--cyan)}
+.c-note{color:var(--dim);margin-left:auto;font-size:.66rem}
 
-        .card h3 { margin-top: 0; color: var(--accent-blue); }
+.hero-btns{display:flex;gap:.65rem;flex-wrap:wrap}
+.btn{
+  font-family:inherit;font-size:.76rem;
+  padding:.52rem 1.2rem;border-radius:var(--r);
+  cursor:pointer;text-decoration:none;
+  display:inline-flex;align-items:center;gap:.45rem;
+  transition:all .15s;border:1px solid transparent;font-weight:500;
+}
+.btn-g{background:var(--green-g);border-color:rgba(126,200,126,.35);color:var(--green2)}
+.btn-g:hover{background:rgba(126,200,126,.14);border-color:var(--green)}
+.btn-o{background:transparent;border-color:var(--line2);color:var(--mid)}
+.btn-o:hover{border-color:var(--dim);color:var(--text)}
 
-        pre {
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            padding: 20px;
-            border-radius: 8px;
-            overflow-x: auto;
-            font-family: var(--font-mono);
-            font-size: 14px;
-            line-height: 1.5;
-        }
+/* HERO RIGHT — terminal */
+.hero-right{background:var(--bg2);display:flex;flex-direction:column;overflow:hidden}
+.t-chrome{
+  display:flex;align-items:center;gap:.5rem;
+  padding:.6rem 1rem;background:var(--bg3);
+  border-bottom:1px solid var(--line);flex-shrink:0;
+}
+.tdot{width:9px;height:9px;border-radius:50%}
+.tdot.r{background:#4a1a1a}.tdot.y{background:#3d3010}.tdot.g{background:#144a14}
+.t-ttl{margin-left:.6rem;font-size:.66rem;color:var(--dim);letter-spacing:.08em}
+.t-body{flex:1;padding:1.4rem;overflow-y:auto;font-size:.76rem;line-height:2}
+.tb{margin-bottom:1.4rem}
+.tb:last-child{margin-bottom:0}
+.tps{color:var(--green)}.tout{color:var(--mid)}
+.tkw{color:var(--amber)}.tfn{color:var(--cyan)}.tstr{color:var(--green2)}.tnum{color:var(--purple)}
+.tcmt{color:var(--dim);font-style:italic}
+.cur{display:inline-block;width:8px;height:1em;background:var(--green);vertical-align:text-bottom;animation:cur .9s step-end infinite}
+@keyframes cur{0%,100%{opacity:1}50%{opacity:0}}
 
-        code {
-            font-family: var(--font-mono);
-            background-color: rgba(110, 118, 129, 0.4);
-            padding: 0.2em 0.4em;
-            border-radius: 6px;
-            font-size: 85%;
-            color: var(--text-main);
-        }
+/* SHELL SECTIONS */
+.sh-section{border-bottom:1px solid var(--line)}
+.sh-header{
+  display:flex;align-items:center;
+  border-bottom:1px solid var(--line);
+  background:var(--bg2);padding:0 2rem;overflow-x:auto;
+}
+.sh-tab{
+  font-size:.7rem;padding:.6rem 1.2rem;color:var(--mid);
+  border-right:1px solid var(--line);white-space:nowrap;
+}
+.sh-tab.act{color:var(--green);background:var(--bg)}
+.sh-tab::before{content:'# ';color:var(--dim)}
+.sh-tab.cmd::before{content:'$ '}
+.sb{padding:clamp(2.5rem,5vw,5rem) clamp(1.5rem,5vw,4rem);max-width:1300px;margin:0 auto}
 
-        pre code { background-color: transparent; padding: 0; }
+/* FEATURES */
+.fg{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--r);margin-top:2.5rem;
+}
+.fc{background:var(--bg);padding:1.8rem 1.6rem;transition:background .2s}
+.fc:hover{background:var(--bg2)}
+.fc-id{color:var(--dim);font-size:.63rem;letter-spacing:.12em;margin-bottom:.9rem}
+.fc-name{color:var(--bright);font-size:.88rem;font-weight:700;margin-bottom:.5rem}
+.fc-name .kw{color:var(--amber)}
+.fc-desc{color:var(--mid);font-size:.74rem;line-height:1.85}
+.ic{font-family:inherit;font-size:.88em;color:var(--cyan);background:var(--bg3);border:1px solid var(--line);padding:.04em .28em;border-radius:2px}
 
-        .syntax-keyword { color: #ff7b72; }
-        .syntax-string { color: #a5d6ff; }
-        .syntax-number { color: #79c0ff; }
-        .syntax-comment { color: #8b949e; font-style: italic; }
+/* PIPELINE */
+.pipeline{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--r);margin-top:2.5rem;
+}
+.ps-{background:var(--bg);padding:1.7rem 1.4rem;transition:background .2s;position:relative}
+.ps-:hover{background:var(--bg2)}
+.ps-:not(:last-child)::after{content:'→';position:absolute;right:-10px;top:50%;transform:translateY(-50%);color:var(--dim);z-index:2}
+.pn{color:var(--dim);font-size:.62rem;margin-bottom:.45rem}
+.pname{color:var(--green);font-weight:700;font-size:.86rem;margin-bottom:.25rem}
+.pfile{color:var(--dim);font-size:.63rem;margin-bottom:.7rem}
+.pdesc{color:var(--mid);font-size:.72rem;line-height:1.75}
+.pe{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);margin-top:1px}
+.pe .ps-{border:none;background:var(--bg2)}
+.pe .ps-:hover{background:var(--bg3)}
+.pe .pname{color:var(--amber)}
 
-        a { color: var(--accent-blue); text-decoration: none; }
-        a:hover { text-decoration: underline; }
+/* EXAMPLES */
+.ex-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);overflow-x:auto}
+.et{
+  font-family:inherit;font-size:.7rem;
+  padding:.58rem 1rem;background:none;border:none;
+  color:var(--dim);cursor:pointer;border-right:1px solid var(--line);
+  border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,background .15s;
+}
+.et::before{content:'./';color:var(--line2)}
+.et.act{color:var(--green2);background:var(--bg2);border-bottom-color:var(--green)}
+.et:hover:not(.act){color:var(--mid)}
+.epane{display:none;background:var(--bg2);border:1px solid var(--line);border-top:none;border-radius:0 0 var(--r) var(--r)}
+.epane.act{display:grid;grid-template-columns:1fr 1fr}
+.ecode{border-right:1px solid var(--line);padding:1.4rem;overflow-x:auto}
+.eout{padding:1.4rem}
+.eout-lbl{color:var(--dim);font-size:.63rem;letter-spacing:.1em;margin-bottom:.9rem}
+pre{font-family:inherit;font-size:.75rem;line-height:2;overflow-x:auto}
 
-        .footer {
-            margin-top: 80px;
-            border-top: 1px solid var(--border-color);
-            padding-top: 30px;
-            text-align: center;
-            font-size: 0.9em;
-            color: var(--text-muted);
-        }
+/* token colors */
+.kw{color:var(--amber)}.fn{color:var(--cyan)}.str{color:var(--green2)}
+.num{color:var(--purple)}.cmt{color:var(--dim);font-style:italic}.op{color:var(--mid)}
+.out{color:var(--text)}
 
-        @media (max-width: 768px) {
-            .grid { grid-template-columns: 1fr; }
-        }
-    </style>
+/* OPCODE TABLE */
+.tw{border:1px solid var(--line);border-radius:var(--r);overflow-x:auto;margin-top:2rem}
+table{width:100%;border-collapse:collapse;font-size:.73rem}
+thead th{
+  background:var(--bg3);padding:.68rem 1rem;text-align:left;
+  color:var(--dim);font-weight:400;letter-spacing:.08em;font-size:.62rem;
+  text-transform:uppercase;border-bottom:1px solid var(--line);
+}
+tbody tr{border-bottom:1px solid var(--line);transition:background .12s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg2)}
+td{padding:.68rem 1rem;vertical-align:top}
+td.op{color:var(--cyan);font-size:.71rem}
+.cat{font-size:.6rem;padding:.1rem .4rem;border-radius:2rem;border:1px solid;white-space:nowrap}
+.cs{color:#8a7fd4;border-color:rgba(138,127,212,.35);background:rgba(138,127,212,.06)}
+.cv{color:var(--cyan);border-color:rgba(94,196,212,.3);background:rgba(94,196,212,.05)}
+.cf{color:var(--amber);border-color:rgba(212,168,75,.3);background:var(--amber-g)}
+.ca{color:var(--green);border-color:rgba(126,200,126,.3);background:var(--green-g)}
+.cc{color:#c47ad4;border-color:rgba(196,122,212,.3);background:rgba(196,122,212,.05)}
+.ci{color:var(--mid);border-color:var(--line2)}
+td:last-child{color:var(--mid);font-size:.72rem}
+
+/* INSTALL */
+.ig{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start}
+.im{border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.mh{padding:.6rem 1rem;background:var(--bg3);border-bottom:1px solid var(--line);font-size:.66rem;color:var(--dim);letter-spacing:.08em}
+.mh span{color:var(--green)}
+.cb{background:var(--bg2);padding:1rem 1.4rem;border-bottom:1px solid var(--line)}
+.cb:last-child{border-bottom:none}
+.pr{color:var(--green);font-size:.73rem;margin-right:.4rem;user-select:none}
+.ct{color:var(--text);font-size:.73rem}
+.cn{color:var(--dim);font-size:.64rem;margin-top:.2rem;padding-left:1.2rem}
+
+/* NATIVES */
+.ng{
+  display:grid;grid-template-columns:repeat(2,1fr);
+  gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--r);margin-top:2rem;
+}
+.nat{background:var(--bg);padding:1.5rem;transition:background .2s}
+.nat:hover{background:var(--bg2)}
+.nsig{color:var(--cyan);font-size:.8rem;margin-bottom:.45rem}
+.nsig .paren{color:var(--mid)}.nsig .arg{color:var(--text)}
+.ndesc{color:var(--mid);font-size:.74rem;line-height:1.8;margin-bottom:.8rem}
+.neg{background:var(--bg3);border:1px solid var(--line);border-radius:2px;padding:.45rem .8rem;font-size:.7rem;color:var(--mid)}
+
+/* FOOTER */
+footer{
+  border-top:1px solid var(--line);padding:1.6rem 2rem;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;
+}
+.fl{font-size:.7rem;color:var(--dim)}
+.fl span{color:var(--green)}
+.fr{display:flex;gap:1.5rem}
+.fr a{font-size:.7rem;color:var(--dim);text-decoration:none;transition:color .15s}
+.fr a::before{content:'$ ';color:var(--line2)}
+.fr a:hover{color:var(--text)}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}
+.reveal.in{opacity:1;transform:none}
+
+/* RESPONSIVE */
+@media(max-width:1000px){
+  .hero{grid-template-columns:1fr;min-height:auto}
+  .hero-right{min-height:360px;border-top:1px solid var(--line)}
+  .hero-left{border-right:none;padding:5rem 1.5rem 3rem}
+  .fg{grid-template-columns:1fr 1fr}
+  .pipeline{grid-template-columns:1fr 1fr}
+  .pe{grid-template-columns:1fr 1fr}
+  .epane.act{grid-template-columns:1fr}
+  .ecode{border-right:none;border-bottom:1px solid var(--line)}
+  .ig{grid-template-columns:1fr}
+  .ng{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .nav-links{display:none}
+  .nav-links.open{
+    display:flex;flex-direction:column;
+    position:fixed;top:48px;left:0;right:0;
+    background:var(--bg);border-bottom:1px solid var(--line);
+    padding:1rem 2rem;gap:.5rem;
+  }
+  .nav-mobile{display:flex}
+  .fg{grid-template-columns:1fr}
+  .pipeline{grid-template-columns:1fr}
+  .ps-:not(:last-child)::after{display:none}
+  .pe{grid-template-columns:1fr}
+  .hero-name{font-size:clamp(3rem,15vw,5rem)}
+}
+</style>
 </head>
 <body>
 
-    <div class="container">
-        <header>
-            <h1>A-Sharp (A#)</h1>
-            <div class="tagline">A high-performance, stack-based bytecode virtual machine written in strictly compliant C99.</div>
-        </header>
+<!-- NAV -->
+<nav>
+  <div class="nav-prompt">
+    <span class="sep">~</span>
+    <span class="path">/lang/asharp</span>
+    <span class="sep">|</span>
+    <span style="color:var(--dim)">v0.1-dev</span>
+  </div>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#features">features</a></li>
+    <li><a href="#arch">arch</a></li>
+    <li><a href="#examples">examples</a></li>
+    <li><a href="#opcodes">bytecode</a></li>
+    <li><a href="#install">install</a></li>
+  </ul>
+  <a href="https://github.com/aadesh006/A-Sharp" class="nav-gh" target="_blank">github.com/aadesh006/A-Sharp</a>
+  <button class="nav-mobile" id="mobileBtn" aria-label="menu"><span></span><span></span><span></span></button>
+</nav>
 
-        <h2>Architecture & Internal Subsystems</h2>
-        <div class="grid">
-            <div class="card">
-                <h3>Bytecode Execution Engine</h3>
-                <p>A-Sharp operates on a custom instruction set architecture. The single-pass compiler translates source text directly into dense, cache-friendly bytecode chunks, entirely bypassing abstract syntax tree (AST) generation. The VM executes this bytecode via a highly optimized, flat array stack, ensuring minimal pointer indirection and high instruction throughput.</p>
-            </div>
-            <div class="card">
-                <h3>Mark & Sweep Garbage Collector</h3>
-                <p>Memory safety is enforced via a dynamic, threshold-triggered garbage collector. The GC traverses the live object graph starting from root pointers (globals, stack frames, open upvalues), marking reachable allocations. It employs a tricolor abstraction (white, gray, black) to systematically sweep unreachable heap allocations, eliminating memory leaks during intense workloads.</p>
-            </div>
-            <div class="card">
-                <h3>Lexical Scoping & Closures</h3>
-                <p>The language supports first-class functions and deep lexical scoping. Local variables are resolved entirely at compile time and accessed via exact stack array indices (`OP_GET_LOCAL`). Variables captured by closures are seamlessly hoisted to the heap using an `ObjUpvalue` linked list, maintaining state even after the parent execution context is destroyed.</p>
-            </div>
-            <div class="card">
-                <h3>Dynamic String Interning</h3>
-                <p>To reduce heap fragmentation and accelerate execution, all strings in A-Sharp are automatically interned into a global hash table. This guarantees string uniqueness in memory, allowing the VM to evaluate string equality using O(1) pointer comparisons rather than O(n) character-by-character checks.</p>
-            </div>
-        </div>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="status-bar">
+      <span class="dot"></span>
+      active development &mdash; core runtime stable
+    </div>
+    <div class="hero-name">A<span class="sharp">#</span></div>
+    <div class="hero-sub-title">Bytecode Virtual Machine &amp; Language</div>
+    <p class="hero-desc">
+      Written in <span class="hl">C from first principles</span>.<br>
+      Stack-based execution. Lexical scoping.<br>
+      First-class closures. Tri-color GC.<br>
+      No runtime. No dependencies. No nonsense.
+    </p>
+    <div class="cmd-stack">
+      <div class="cmd-row"><span class="ps">$</span><span class="c-cmd">sudo apt install <span style="color:var(--green2)">asharp</span></span><span class="c-note">// recommended</span></div>
+      <div class="cmd-row"><span class="ps">$</span><span class="c-cmd">asharp <span class="c-arg">script.as</span></span><span class="c-note">// run a file</span></div>
+      <div class="cmd-row"><span class="ps">$</span><span class="c-cmd">asharp</span><span class="c-note">// launch REPL</span></div>
+    </div>
+    <div class="hero-btns">
+      <a href="#install" class="btn btn-g">install</a>
+      <a href="https://github.com/aadesh006/A-Sharp" class="btn btn-o" target="_blank">view source</a>
+    </div>
+  </div>
 
-        <h2>Syntax Example: GC Stress Test</h2>
-        <p>This script demonstrates dynamic heap allocation and automatic garbage collection. The loop rapidly allocates 100,000 concatenated strings. Because `dump` goes out of scope per iteration, the GC intercepts the allocations dynamically, sweeping the unreferenced pointers before the heap threshold is exhausted.</p>
-        <pre><code><span class="syntax-keyword">var</span> a = <span class="syntax-string">"garbage"</span>;
-<span class="syntax-keyword">var</span> b = <span class="syntax-string">" collection"</span>;
-<span class="syntax-keyword">var</span> i = <span class="syntax-number">0</span>;
+  <div class="hero-right">
+    <div class="t-chrome">
+      <div class="tdot r"></div><div class="tdot y"></div><div class="tdot g"></div>
+      <span class="t-ttl">asharp &nbsp;&mdash;&nbsp; interactive session</span>
+    </div>
+    <div class="t-body">
+      <div class="tb">
+        <div><span class="tps">$ </span><span style="color:var(--bright)">asharp</span></div>
+        <div><span class="tout">A# bytecode VM &nbsp;|&nbsp; readline enabled</span></div>
+      </div>
+      <div class="tb">
+        <div><span class="tps">A# </span><span class="tkw">fun </span><span class="tfn">makeCounter</span>() {</div>
+        <div>&nbsp;&nbsp;&nbsp;<span class="tkw">var </span>count = <span class="tnum">0</span>;</div>
+        <div>&nbsp;&nbsp;&nbsp;<span class="tkw">fun </span><span class="tfn">increment</span>() {</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;count = count + <span class="tnum">1</span>;</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tkw">return </span>count;</div>
+        <div>&nbsp;&nbsp;&nbsp;}</div>
+        <div>&nbsp;&nbsp;&nbsp;<span class="tkw">return </span>increment;</div>
+        <div>}</div>
+      </div>
+      <div class="tb">
+        <div><span class="tps">A# </span><span class="tkw">var </span>c = <span class="tfn">makeCounter</span>();</div>
+        <div><span class="tps">A# </span><span class="tkw">print </span><span class="tfn">c</span>(); <span class="tout">1</span></div>
+        <div><span class="tps">A# </span><span class="tkw">print </span><span class="tfn">c</span>(); <span class="tout">2</span></div>
+        <div><span class="tps">A# </span><span class="tkw">print </span><span class="tfn">c</span>(); <span class="tout">3</span></div>
+      </div>
+      <div class="tb">
+        <div><span class="tps">A# </span><span class="tkw">fun </span><span class="tfn">fib</span>(n) { <span class="tkw">if </span>(n &lt; <span class="tnum">2</span>) <span class="tkw">return </span>n; <span class="tkw">return </span><span class="tfn">fib</span>(n-<span class="tnum">2</span>)+<span class="tfn">fib</span>(n-<span class="tnum">1</span>); }</div>
+        <div><span class="tps">A# </span><span class="tkw">print </span><span class="tfn">fib</span>(<span class="tnum">10</span>); <span class="tout">55</span></div>
+      </div>
+      <div class="tb">
+        <div><span class="tps">A# </span><span class="tkw">print </span><span class="tfn">sqrt</span>(<span class="tfn">floor</span>(<span class="tnum">64.9</span>)); <span class="tout">8</span></div>
+        <div><span class="tps">A# </span><span class="cur"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
 
-<span class="syntax-keyword">while</span> (i &lt; <span class="syntax-number">100000</span>) {
-  <span class="syntax-comment">// Dynamically allocates a new string on the heap every loop iteration.</span>
-  <span class="syntax-keyword">var</span> dump = a + b; 
-  i = i + <span class="syntax-number">1</span>;
-}
+<!-- FEATURES -->
+<section class="sh-section" id="features">
+  <div class="sh-header">
+    <div class="sh-tab act">FEATURES</div>
+    <div class="sh-tab" style="color:var(--dim)">written in C &nbsp;|&nbsp; no external deps</div>
+  </div>
+  <div class="sb">
+    <div class="fg reveal">
+      <div class="fc">
+        <div class="fc-id">// 01</div>
+        <div class="fc-name"><span class="kw">single_pass</span> compiler</div>
+        <p class="fc-desc">Pratt parser emits bytecode directly during parsing. No AST constructed. Compilation is a single linear pass over the token stream &mdash; keeps it fast and memory-lean.</p>
+      </div>
+      <div class="fc">
+        <div class="fc-id">// 02</div>
+        <div class="fc-name"><span class="kw">stack_based</span> VM</div>
+        <p class="fc-desc">All operations push and pop from a contiguous value stack. Call frames hold a pointer into this stack as their local variable window. Up to 64 nested frames.</p>
+      </div>
+      <div class="fc">
+        <div class="fc-id">// 03</div>
+        <div class="fc-name"><span class="kw">closures</span> + upvalues</div>
+        <p class="fc-desc">Captured variables live on the stack while the enclosing function is active. <span class="ic">OP_CLOSE_UPVALUE</span> promotes them to the heap when the scope exits.</p>
+      </div>
+      <div class="fc">
+        <div class="fc-id">// 04</div>
+        <div class="fc-name"><span class="kw">tri_color</span> mark-and-sweep GC</div>
+        <p class="fc-desc">Gray worklist drives collection. <span class="ic">bytesAllocated</span> tracked against a dynamic <span class="ic">nextGC</span> threshold. Heap grows automatically between collection cycles.</p>
+      </div>
+      <div class="fc">
+        <div class="fc-id">// 05</div>
+        <div class="fc-name"><span class="kw">string</span> interning</div>
+        <p class="fc-desc">All strings deduplicated in a global hash table backed by <span class="ic">vm.strings</span>. Equality is O(1) pointer comparison regardless of string length. GC-aware.</p>
+      </div>
+      <div class="fc">
+        <div class="fc-id">// 06</div>
+        <div class="fc-name"><span class="kw">native</span> function API</div>
+        <p class="fc-desc">Expose any C function to A# with <span class="ic">defineNative()</span>. Three lines of code. No FFI overhead, no wrappers. The built-ins are all defined this way.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-<span class="syntax-keyword">print</span> <span class="syntax-string">"Execution complete. GC prevented OOM crash."</span>;</code></pre>
+<!-- ARCHITECTURE -->
+<section class="sh-section" id="arch">
+  <div class="sh-header">
+    <div class="sh-tab act">ARCHITECTURE</div>
+    <div class="sh-tab" style="color:var(--dim)">compilation pipeline</div>
+  </div>
+  <div class="sb">
+    <div class="pipeline reveal">
+      <div class="ps-">
+        <div class="pn">// step 01</div>
+        <div class="pname">Scanner</div>
+        <div class="pfile">scanner.c &nbsp;scanner.h</div>
+        <p class="pdesc">Converts raw source text into a flat token stream. Handles identifiers, string literals, numbers, keywords, and all punctuation in a single pass.</p>
+      </div>
+      <div class="ps-">
+        <div class="pn">// step 02</div>
+        <div class="pname">Compiler</div>
+        <div class="pfile">compiler.c &nbsp;compiler.h</div>
+        <p class="pdesc">Pratt parser consumes tokens and emits bytecode directly into a chunk. Resolves local variables and captures upvalues inline, no AST required.</p>
+      </div>
+      <div class="ps-">
+        <div class="pn">// step 03</div>
+        <div class="pname">Chunk</div>
+        <div class="pfile">chunk.c &nbsp;chunk.h</div>
+        <p class="pdesc">Stores the instruction byte array, a constant pool, and per-instruction line numbers for runtime error reporting and debug output.</p>
+      </div>
+      <div class="ps-">
+        <div class="pn">// step 04</div>
+        <div class="pname">VM</div>
+        <div class="pfile">vm.c &nbsp;vm.h</div>
+        <p class="pdesc">Stack-based interpreter with tight dispatch loop. Manages value stack, 64-frame call stack, open upvalue list, and triggers garbage collection.</p>
+      </div>
+    </div>
+    <div class="pe reveal">
+      <div class="ps-">
+        <div class="pn">// support</div>
+        <div class="pname">Memory</div>
+        <div class="pfile">memory.c &nbsp;memory.h</div>
+        <p class="pdesc">All heap allocation routed through a single wrapper. Runs mark-and-sweep. Maintains gray worklist and reallocation strategy.</p>
+      </div>
+      <div class="ps-">
+        <div class="pn">// support</div>
+        <div class="pname">Objects</div>
+        <div class="pfile">object.c &nbsp;object.h</div>
+        <p class="pdesc">Heap-allocated runtime objects: strings, functions, closures, upvalues. All carry a GC header and participate in the mark graph.</p>
+      </div>
+      <div class="ps-">
+        <div class="pn">// support</div>
+        <div class="pname">Hash Table</div>
+        <div class="pfile">table.c &nbsp;table.h</div>
+        <p class="pdesc">Open-addressing table with 75% load factor. Backs global variable lookup and the string intern pool simultaneously.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-        <h2>System Installation</h2>
-        
-        <h3>Debian / Ubuntu (APT Package Manager)</h3>
-        <p>A-Sharp is distributed as a pre-compiled `amd64` `.deb` package. Execute the following commands to add the repository to your system and install the binary globally.</p>
-        <pre><code><span class="syntax-comment"># 1. Authorize the A-Sharp APT repository</span>
-echo "deb [trusted=yes] https://aadesh006.github.io/A-Sharp/ ./" | sudo tee /etc/apt/sources.list.d/asharp.list
-
-<span class="syntax-comment"># 2. Synchronize package indices</span>
-sudo apt update
-
-<span class="syntax-comment"># 3. Install the executable</span>
-sudo apt install asharp</code></pre>
-
-        <h3>macOS & Unsupported Linux Architectures (Build from Source)</h3>
-        <p>For systems operating on `arm64` (Apple Silicon) or distros outside the Debian family, the C toolchain is required to build the VM locally.</p>
-        <pre><code><span class="syntax-comment"># Clone the repository and compile</span>
-git clone https://github.com/aadesh006/A-Sharp.git
-cd A-Sharp
-make
-
-<span class="syntax-comment"># Execute the compiled binary</span>
-./asharp</code></pre>
-
-        <div class="footer">
-            <p>Licensed under the MIT License. Copyright &copy; 2026 Aadesh.</p>
-            <p><a href="https://github.com/aadesh006/A-Sharp">View Source Repository on GitHub</a></p>
-        </div>
+<!-- EXAMPLES -->
+<section class="sh-section" id="examples">
+  <div class="sh-header">
+    <div class="sh-tab act">EXAMPLES</div>
+  </div>
+  <div class="sb">
+    <div class="ex-tabs">
+      <button class="et act" onclick="showEx('closures',this)">closures.as</button>
+      <button class="et" onclick="showEx('fib',this)">fibonacci.as</button>
+      <button class="et" onclick="showEx('scoping',this)">scoping.as</button>
+      <button class="et" onclick="showEx('input',this)">hypotenuse.as</button>
+      <button class="et" onclick="showEx('loops',this)">loops.as</button>
+      <button class="et" onclick="showEx('native',this)">native_ext.c</button>
     </div>
 
+    <div id="ex-closures" class="epane act">
+      <div class="ecode"><pre><span class="cmt">// Closures capture variables from
+// enclosing scope via upvalues.</span>
+
+<span class="kw">fun</span> <span class="fn">makeCounter</span>() {
+  <span class="kw">var</span> count <span class="op">=</span> <span class="num">0</span>;
+
+  <span class="kw">fun</span> <span class="fn">increment</span>() {
+    count <span class="op">=</span> count <span class="op">+</span> <span class="num">1</span>;
+    <span class="kw">return</span> count;
+  }
+
+  <span class="kw">return</span> increment;
+}
+
+<span class="kw">var</span> counter <span class="op">=</span> <span class="fn">makeCounter</span>();
+<span class="kw">print</span> <span class="fn">counter</span>();
+<span class="kw">print</span> <span class="fn">counter</span>();
+<span class="kw">print</span> <span class="fn">counter</span>();
+</pre></div>
+      <div class="eout">
+        <div class="eout-lbl">// OUTPUT</div>
+        <pre><span class="out">1
+2
+3</span>
+
+<span class="cmt">// OP_CLOSE_UPVALUE promotes
+// `count` to heap when
+// makeCounter() returns.</span></pre>
+      </div>
+    </div>
+
+    <div id="ex-fib" class="epane">
+      <div class="ecode"><pre><span class="cmt">// Recursive fibonacci</span>
+<span class="kw">fun</span> <span class="fn">fib</span>(n) {
+  <span class="kw">if</span> (n <span class="op">&lt;</span> <span class="num">2</span>) <span class="kw">return</span> n;
+  <span class="kw">return</span> <span class="fn">fib</span>(n<span class="op">-</span><span class="num">2</span>) <span class="op">+</span> <span class="fn">fib</span>(n<span class="op">-</span><span class="num">1</span>);
+}
+
+<span class="kw">print</span> <span class="fn">fib</span>(<span class="num">10</span>);
+<span class="kw">print</span> <span class="fn">fib</span>(<span class="num">20</span>);
+
+<span class="cmt">// Iterative — O(1) space</span>
+<span class="kw">var</span> a <span class="op">=</span> <span class="num">0</span>; <span class="kw">var</span> b <span class="op">=</span> <span class="num">1</span>;
+
+<span class="kw">for</span> (<span class="kw">var</span> i <span class="op">=</span> <span class="num">0</span>; i <span class="op">&lt;</span> <span class="num">10</span>; i <span class="op">=</span> i<span class="op">+</span><span class="num">1</span>) {
+  <span class="kw">print</span> a;
+  <span class="kw">var</span> t <span class="op">=</span> a<span class="op">+</span>b; a<span class="op">=</span>b; b<span class="op">=</span>t;
+}
+</pre></div>
+      <div class="eout">
+        <div class="eout-lbl">// OUTPUT</div>
+        <pre><span class="out">55
+6765
+
+0 1 1 2 3
+5 8 13 21 34</span></pre>
+      </div>
+    </div>
+
+    <div id="ex-scoping" class="epane">
+      <div class="ecode"><pre><span class="kw">var</span> a <span class="op">=</span> <span class="str">"outer"</span>;
+<span class="kw">var</span> b <span class="op">=</span> <span class="str">"global"</span>;
+
+{
+  <span class="kw">var</span> a <span class="op">=</span> <span class="num">42</span>;
+  <span class="kw">var</span> c <span class="op">=</span> <span class="num">100</span>;
+  <span class="kw">print</span> a <span class="op">+</span> c;  <span class="cmt">// local shadows outer</span>
+  <span class="kw">print</span> b;      <span class="cmt">// still visible</span>
+}
+
+<span class="kw">print</span> a;      <span class="cmt">// locals discarded</span>
+<span class="cmt">// print c;   → runtime error</span>
+</pre></div>
+      <div class="eout">
+        <div class="eout-lbl">// OUTPUT</div>
+        <pre><span class="out">142
+global
+outer</span>
+
+<span class="cmt">// OP_GET_LOCAL reads by
+// stack slot index. Scope
+// exit emits OP_POP for
+// each local variable.</span></pre>
+      </div>
+    </div>
+
+    <div id="ex-input" class="epane">
+      <div class="ecode"><pre><span class="kw">print</span> <span class="str">"Calculate Hypotenuse"</span>;
+
+<span class="kw">var</span> a <span class="op">=</span> <span class="fn">input</span>(<span class="str">"Side A: "</span>);
+<span class="kw">var</span> b <span class="op">=</span> <span class="fn">input</span>(<span class="str">"Side B: "</span>);
+
+<span class="cmt">// input() returns strings.
+// Coerced to numbers in arithmetic.</span>
+
+<span class="kw">var</span> h <span class="op">=</span> <span class="fn">sqrt</span>((a<span class="op">*</span>a) <span class="op">+</span> (b<span class="op">*</span>b));
+<span class="kw">print</span> <span class="str">"Hypotenuse: "</span> <span class="op">+</span> h;
+</pre></div>
+      <div class="eout">
+        <div class="eout-lbl">// OUTPUT</div>
+        <pre><span class="out">Calculate Hypotenuse
+Side A: 3
+Side B: 4
+Hypotenuse: 5</span>
+
+<span class="cmt">// input() reads via
+// readline with prompt
+// display.</span></pre>
+      </div>
+    </div>
+
+    <div id="ex-loops" class="epane">
+      <div class="ecode"><pre><span class="cmt">// while loop</span>
+<span class="kw">var</span> i <span class="op">=</span> <span class="num">0</span>;
+<span class="kw">while</span> (i <span class="op">&lt;</span> <span class="num">5</span>) {
+  <span class="kw">print</span> i; i <span class="op">=</span> i <span class="op">+</span> <span class="num">1</span>;
+}
+
+<span class="cmt">// C-style for loop</span>
+<span class="kw">for</span> (<span class="kw">var</span> n<span class="op">=</span><span class="num">1</span>; n<span class="op">&lt;=</span><span class="num">5</span>; n<span class="op">=</span>n<span class="op">+</span><span class="num">1</span>) {
+  <span class="kw">print</span> n <span class="op">*</span> n;
+}
+
+<span class="cmt">// if / else</span>
+<span class="kw">var</span> age <span class="op">=</span> <span class="num">20</span>;
+<span class="kw">if</span> (age <span class="op">&gt;=</span> <span class="num">18</span>) {
+  <span class="kw">print</span> <span class="str">"adult"</span>;
+} <span class="kw">else</span> { <span class="kw">print</span> <span class="str">"minor"</span>; }
+</pre></div>
+      <div class="eout">
+        <div class="eout-lbl">// OUTPUT</div>
+        <pre><span class="out">0 1 2 3 4
+
+1 4 9 16 25
+
+adult</span>
+
+<span class="cmt">// for desugars to
+// while + OP_LOOP
+// (backward jump).</span></pre>
+      </div>
+    </div>
+
+    <div id="ex-native" class="epane">
+      <div class="ecode"><pre><span class="cmt">/* vm.c — add a native */</span>
+
+<span class="kw">static</span> Value <span class="fn">absNative</span>(
+  <span class="kw">int</span> argCount,
+  Value* args
+) {
+  <span class="kw">double</span> n <span class="op">=</span> <span class="fn">AS_NUMBER</span>(args[<span class="num">0</span>]);
+  <span class="kw">return</span> <span class="fn">NUMBER_VAL</span>(n <span class="op">&lt;</span> <span class="num">0</span> ? <span class="op">-</span>n : n);
+}
+
+<span class="cmt">// Register in initVM()</span>
+<span class="fn">defineNative</span>(<span class="str">"abs"</span>, absNative);
+</pre></div>
+      <div class="eout">
+        <div class="eout-lbl">// OUTPUT</div>
+        <pre><span class="cmt">// now callable in A#</span>
+
+<span class="kw">print</span> <span class="fn">abs</span>(<span class="op">-</span><span class="num">42</span>);
+<span class="out">42</span>
+
+<span class="kw">print</span> <span class="fn">abs</span>(<span class="op">-</span><span class="num">3.14</span>);
+<span class="out">3.14</span>
+
+<span class="cmt">// Three lines to expose
+// any C function as a
+// first-class built-in.</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NATIVE FUNCTIONS -->
+<section class="sh-section">
+  <div class="sh-header">
+    <div class="sh-tab act">NATIVE FUNCTIONS</div>
+    <div class="sh-tab" style="color:var(--dim)">built-in reference</div>
+  </div>
+  <div class="sb">
+    <div class="ng reveal">
+      <div class="nat">
+        <div class="nsig"><span class="fn">clock</span><span class="paren">()</span> <span style="color:var(--dim)">→ number</span></div>
+        <p class="ndesc">Returns current time in seconds since the Unix epoch. Wraps C's <span class="ic">time()</span>. Use for benchmarking elapsed time between two calls.</p>
+        <div class="neg"><span class="kw">var</span> t = <span class="fn">clock</span>(); <span class="cmt">// 1738612345.678</span></div>
+      </div>
+      <div class="nat">
+        <div class="nsig"><span class="fn">sqrt</span><span class="paren">(<span class="arg">n</span>)</span> <span style="color:var(--dim)">→ number</span></div>
+        <p class="ndesc">Returns the square root of a non-negative number. Wraps C's <span class="ic">sqrt()</span> from math.h. Negative input produces a runtime error.</p>
+        <div class="neg"><span class="fn">sqrt</span>(<span class="num">64</span>); <span class="cmt">// 8</span></div>
+      </div>
+      <div class="nat">
+        <div class="nsig"><span class="fn">floor</span><span class="paren">(<span class="arg">n</span>)</span> <span style="color:var(--dim)">→ number</span></div>
+        <p class="ndesc">Returns the largest integer less than or equal to <span class="ic">n</span>. Handles negatives correctly: <span class="ic">floor(-2.3)</span> is <span class="ic">-3</span>, not <span class="ic">-2</span>.</p>
+        <div class="neg"><span class="fn">floor</span>(<span class="num">-2.3</span>); <span class="cmt">// -3</span></div>
+      </div>
+      <div class="nat">
+        <div class="nsig"><span class="fn">input</span><span class="paren">(<span class="arg">prompt</span>)</span> <span style="color:var(--dim)">→ string</span></div>
+        <p class="ndesc">Displays <span class="ic">prompt</span> and reads a line from stdin via readline. Returns a string. Automatically coerced to number in arithmetic context.</p>
+        <div class="neg"><span class="fn">input</span>(<span class="str">"Name: "</span>); <span class="cmt">// string</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OPCODES -->
+<section class="sh-section" id="opcodes">
+  <div class="sh-header">
+    <div class="sh-tab act">BYTECODE REFERENCE</div>
+    <div class="sh-tab" style="color:var(--dim)">instruction set &nbsp;|&nbsp; 16-bit jump offsets</div>
+  </div>
+  <div class="sb">
+    <div class="tw reveal">
+      <table>
+        <thead><tr><th>opcode</th><th>category</th><th>description</th></tr></thead>
+        <tbody>
+          <tr><td class="op">OP_CONSTANT</td><td><span class="cat cs">stack</span></td><td>Push a constant from the chunk's constant pool onto the value stack</td></tr>
+          <tr><td class="op">OP_NIL / OP_TRUE / OP_FALSE</td><td><span class="cat cs">stack</span></td><td>Push literal values directly without a constant pool lookup</td></tr>
+          <tr><td class="op">OP_POP</td><td><span class="cat cs">stack</span></td><td>Discard the top value; emitted after expression statements</td></tr>
+          <tr><td class="op">OP_GET_LOCAL / OP_SET_LOCAL</td><td><span class="cat cv">variable</span></td><td>Read or write a local variable by its stack slot index</td></tr>
+          <tr><td class="op">OP_GET_GLOBAL / OP_SET_GLOBAL</td><td><span class="cat cv">variable</span></td><td>Global variable access via hash table lookup by interned name</td></tr>
+          <tr><td class="op">OP_DEFINE_GLOBAL</td><td><span class="cat cv">variable</span></td><td>Bind a new name in the global hash table on first declaration</td></tr>
+          <tr><td class="op">OP_GET_UPVALUE / OP_SET_UPVALUE</td><td><span class="cat cc">closure</span></td><td>Read or write a captured upvalue inside the current closure</td></tr>
+          <tr><td class="op">OP_CLOSE_UPVALUE</td><td><span class="cat cc">closure</span></td><td>Promote an open upvalue from stack slot to heap allocation on scope exit</td></tr>
+          <tr><td class="op">OP_CLOSURE</td><td><span class="cat cc">closure</span></td><td>Wrap a function object in a closure and capture its upvalue references</td></tr>
+          <tr><td class="op">OP_JUMP</td><td><span class="cat cf">flow</span></td><td>Unconditional forward jump by a 16-bit signed offset</td></tr>
+          <tr><td class="op">OP_JUMP_IF_FALSE</td><td><span class="cat cf">flow</span></td><td>Conditional forward jump; leaves condition on the stack (peek, not pop)</td></tr>
+          <tr><td class="op">OP_LOOP</td><td><span class="cat cf">flow</span></td><td>Unconditional backward jump; the primitive behind while and for loops</td></tr>
+          <tr><td class="op">OP_CALL</td><td><span class="cat cf">flow</span></td><td>Invoke a closure, function, or native with a given argument count</td></tr>
+          <tr><td class="op">OP_RETURN</td><td><span class="cat cf">flow</span></td><td>Return from current frame; closes any remaining open upvalues</td></tr>
+          <tr><td class="op">OP_ADD / OP_SUBTRACT / OP_MULTIPLY / OP_DIVIDE</td><td><span class="cat ca">arithmetic</span></td><td>Pop two operands, compute, push result. OP_ADD also concatenates strings</td></tr>
+          <tr><td class="op">OP_EQUAL / OP_GREATER / OP_LESS</td><td><span class="cat ca">arithmetic</span></td><td>Comparison operators; interned strings compare by pointer in O(1)</td></tr>
+          <tr><td class="op">OP_NOT / OP_NEGATE</td><td><span class="cat ca">arithmetic</span></td><td>Unary logical and numeric negation on top-of-stack value</td></tr>
+          <tr><td class="op">OP_PRINT</td><td><span class="cat ci">i/o</span></td><td>Pop and print the top-of-stack value followed by a newline to stdout</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section class="sh-section" id="install">
+  <div class="sh-header">
+    <div class="sh-tab act">INSTALL</div>
+    <div class="sh-tab" style="color:var(--dim)">debian / ubuntu / wsl / macos</div>
+  </div>
+  <div class="sb">
+    <div class="ig reveal">
+      <div>
+        <div class="im">
+          <div class="mh"><span>APT</span> &nbsp;/ Debian &middot; Ubuntu &middot; WSL &nbsp;(recommended)</div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">echo "deb [trusted=yes] https://aadesh006.github.io/A-Sharp/ ./" | sudo tee /etc/apt/sources.list.d/asharp.list</span></div><div class="cn">adds the package repository</div></div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">sudo apt update</span></div></div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">sudo apt install asharp</span></div><div class="cn">installs asharp binary to /usr/bin</div></div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">asharp &nbsp;<span style="color:var(--cyan)">script.as</span></span></div><div class="cn">or just `asharp` to open the REPL</div></div>
+        </div>
+        <div class="im" style="margin-top:1rem">
+          <div class="mh"><span>SOURCE</span> &nbsp;/ any Linux</div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">sudo apt install build-essential libreadline-dev</span></div></div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">git clone https://github.com/aadesh006/A-Sharp.git && cd A-Sharp</span></div></div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">make</span></div><div class="cn">outputs ./asharp in the project root</div></div>
+        </div>
+        <div class="im" style="margin-top:1rem">
+          <div class="mh"><span>MACOS</span> &nbsp;/ Homebrew</div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">brew install readline</span></div></div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">export CPPFLAGS="-I/opt/homebrew/opt/readline/include"</span></div></div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">export LDFLAGS="-L/opt/homebrew/opt/readline/lib"</span></div></div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">git clone https://github.com/aadesh006/A-Sharp.git && cd A-Sharp && make</span></div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="im">
+          <div class="mh"><span>DEBUG BUILD</span> &nbsp;/ common.h flags</div>
+          <div class="cb">
+            <pre style="padding:0"><span class="cmt">// Uncomment in common.h</span>
+<span class="op">#define</span> <span class="kw">DEBUG_TRACE_EXECUTION</span>
+<span class="cmt">// prints stack + instruction
+// before each opcode dispatch</span>
+
+<span class="op">#define</span> <span class="kw">DEBUG_PRINT_CODE</span>
+<span class="cmt">// disassembles every compiled
+// chunk after compilation</span></pre>
+          </div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">make <span style="color:var(--cyan)">CFLAGS</span>=<span style="color:var(--green2)">"-g -O0"</span></span></div><div class="cn">build with debug symbols for gdb / lldb</div></div>
+          <div class="cb"><div><span class="pr">$</span><span class="ct">./asharp test.as</span></div><div class="cn">run the bundled sample programs</div></div>
+        </div>
+
+        <div class="im" style="margin-top:1rem">
+          <div class="mh"><span>PROJECT STRUCTURE</span></div>
+          <div class="cb">
+            <pre style="padding:0;line-height:1.9"><span class="out">A-Sharp/</span>
+<span class="op">├── </span><span class="fn">main.c</span>         <span class="cmt">entry point, REPL</span>
+<span class="op">├── </span><span class="fn">scanner.{c,h}</span>  <span class="cmt">tokenizer</span>
+<span class="op">├── </span><span class="fn">compiler.{c,h}</span> <span class="cmt">Pratt parser + codegen</span>
+<span class="op">├── </span><span class="fn">vm.{c,h}</span>       <span class="cmt">bytecode interpreter</span>
+<span class="op">├── </span><span class="fn">chunk.{c,h}</span>    <span class="cmt">instruction storage</span>
+<span class="op">├── </span><span class="fn">value.{c,h}</span>    <span class="cmt">runtime values</span>
+<span class="op">├── </span><span class="fn">object.{c,h}</span>   <span class="cmt">heap objects</span>
+<span class="op">├── </span><span class="fn">memory.{c,h}</span>   <span class="cmt">allocator + GC</span>
+<span class="op">├── </span><span class="fn">table.{c,h}</span>    <span class="cmt">hash table</span>
+<span class="op">├── </span><span class="fn">debug.{c,h}</span>    <span class="cmt">disassembler</span>
+<span class="op">├── </span><span class="fn">Makefile</span>
+<span class="op">└── </span><span class="fn">test.as</span>        <span class="cmt">sample programs</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="fl"><span>A#</span> &mdash; built by <a href="https://github.com/aadesh006" style="color:var(--mid);text-decoration:none">Aadesh Chaudhari</a> &nbsp;|&nbsp; follows <em>Crafting Interpreters</em> Part III &mdash; Robert Nystrom</div>
+  <div class="fr">
+    <a href="https://github.com/aadesh006/A-Sharp" target="_blank">github</a>
+    <a href="#features">features</a>
+    <a href="#arch">arch</a>
+    <a href="#install">install</a>
+  </div>
+</footer>
+
+<script>
+const exIds=['closures','fib','scoping','input','loops','native'];
+function showEx(id,btn){
+  exIds.forEach(i=>{
+    const el=document.getElementById('ex-'+i);
+    if(el)el.classList.toggle('act',i===id);
+  });
+  document.querySelectorAll('.et').forEach(b=>b.classList.remove('act'));
+  if(btn)btn.classList.add('act');
+}
+
+document.getElementById('mobileBtn').addEventListener('click',()=>{
+  document.getElementById('navLinks').classList.toggle('open');
+});
+
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in')});
+},{threshold:0.07});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+</script>
 </body>
 </html>
