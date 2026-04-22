@@ -106,7 +106,7 @@ To install the A-Sharp virtual machine natively on your system, execute the foll
 
 ```bash
 # 1. Add the A-Sharp repository to your APT sources list
-echo "deb [trusted=yes] [https://aadesh006.github.io/A-Sharp/](https://aadesh006.github.io/A-Sharp/) ./" | sudo tee /etc/apt/sources.list.d/asharp.list
+echo "deb [trusted=yes] https://aadesh006.github.io/A-Sharp/ ./" | sudo tee /etc/apt/sources.list.d/asharp.list
 
 # 2. Update the local package index
 sudo apt update
