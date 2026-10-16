@@ -1,2 +1,17 @@
+# Compiled binaries
 asharp
+asharp_llvm
+
+# Build directories (object files)
 build/
+build_llvm/
+
+# Object files (if ever built outside build dirs)
+*.o
+
+# Debug/core dumps
+*.dSYM/
+core
+
+#test files of A-Sharp
+*.as
