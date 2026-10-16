@@ -12,3 +12,6 @@ build_llvm/
 # Debug/core dumps
 *.dSYM/
 core
+
+#test files of A-Sharp
+*.as
