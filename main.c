@@ -50,7 +50,7 @@ static char* readFile(const char* path) {
 
 // REPL — unchanged, always uses the bytecode VM
 static void repl() {
-  printf("============Welcome to A-Sharp v0.1============\n");
+  printf("============Welcome to A-Sharp v2.0============\n");
   printf("Press Ctrl+D to quit.\n");
 
   char* line;
