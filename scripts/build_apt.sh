@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION="1.0.0"
+VERSION="2.0.0"
 ARCH="amd64"
 PKG_NAME="asharp_${VERSION}_${ARCH}"
 
