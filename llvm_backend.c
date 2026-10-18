@@ -157,8 +157,28 @@ static FuncEntry* lookupFunction(FuncRegistry* r, ObjFunction* objFn) {
 }
 
 // ---------------------------------------------------------------------------
-// BLOCK MAP — maps bytecode offsets to LLVM basic blocks.
+// NATIVE FUNCTION REGISTRY
+// Maps A# native function names to their LLVM function declarations.
 // ---------------------------------------------------------------------------
+typedef struct { const char* name; LLVMValueRef fn; LLVMTypeRef type; } NativeEntry;
+#define NATIVES_MAX 16
+typedef struct { NativeEntry entries[NATIVES_MAX]; int count; } NativeRegistry;
+
+static void nativesInit(NativeRegistry* n) { n->count = 0; }
+
+static void registerNative(NativeRegistry* n, const char* name,
+                           LLVMValueRef fn, LLVMTypeRef type) {
+    n->entries[n->count].name = name;
+    n->entries[n->count].fn   = fn;
+    n->entries[n->count].type = type;
+    n->count++;
+}
+
+static NativeEntry* lookupNative(NativeRegistry* n, const char* name) {
+    for (int i = 0; i < n->count; i++)
+        if (strcmp(n->entries[i].name, name) == 0) return &n->entries[i];
+    return NULL;
+}
 #define BLOCK_MAP_SIZE 4096
 
 typedef struct { LLVMBasicBlockRef blocks[BLOCK_MAP_SIZE]; } BlockMap;
@@ -187,8 +207,10 @@ typedef struct {
     LLVMValueRef    fmt_double;
     LLVMValueStack  stack;
     LocalSlots      locals;
-    GlobalMap*      globals;   // shared across all functions
-    FuncRegistry*   funcs;     // shared across all functions
+    GlobalMap*      globals;
+    FuncRegistry*   funcs;
+    NativeRegistry* natives;
+    NativeEntry*    pendingNative; // set by OP_GET_GLOBAL when callee is native
     bool            isTopLevel;
 } TranslateCtx;
 
@@ -336,8 +358,17 @@ static bool translateChunk(TranslateCtx* ctx, Chunk* chunk) {
             case OP_GET_GLOBAL: {
                 uint8_t idx = chunk->code[i+1];
                 const char* name = AS_CSTRING(chunk->constants.values[idx]);
-                LLVMValueRef gv = findOrCreateGlobal(ctx->globals, name, ctx->module);
-                stackPush(&ctx->stack, LLVMBuildLoad2(ctx->builder,LLVMDoubleType(),gv,"global"));
+                // Check if this is a native function call
+                NativeEntry* native = lookupNative(ctx->natives, name);
+                if (native) {
+                    // Mark pending native; push a dummy 0.0 to keep stack balanced
+                    ctx->pendingNative = native;
+                    stackPush(&ctx->stack, LLVMConstReal(LLVMDoubleType(), 0.0));
+                } else {
+                    ctx->pendingNative = NULL;
+                    LLVMValueRef gv = findOrCreateGlobal(ctx->globals, name, ctx->module);
+                    stackPush(&ctx->stack, LLVMBuildLoad2(ctx->builder,LLVMDoubleType(),gv,"global"));
+                }
                 i += 2; break;
             }
             case OP_SET_GLOBAL: {
@@ -404,26 +435,35 @@ static bool translateChunk(TranslateCtx* ctx, Chunk* chunk) {
             case OP_CALL: {
                 uint8_t argCount = chunk->code[i+1];
 
-                // Collect arguments (they're on the stack above the callee)
+                // Stack layout at call site: [callee, arg0, arg1, ..., argN-1]
+                // Collect args first (they sit on top), then pop callee.
                 LLVMValueRef* args = (LLVMValueRef*)malloc(argCount * sizeof(LLVMValueRef));
-                // args are pushed left-to-right, so pop right-to-left
                 for (int a = argCount - 1; a >= 0; a--)
                     args[a] = stackPop(&ctx->stack);
 
-                // Pop the callee (function pointer stored as double)
-                LLVMValueRef calleeAsDouble = stackPop(&ctx->stack);
+                // Pop the callee slot
+                LLVMValueRef calleeVal = stackPop(&ctx->stack);
 
-                // Cast double back to function pointer
-                LLVMValueRef calleeAsInt = LLVMBuildBitCast(ctx->builder,
-                    calleeAsDouble, LLVMInt64Type(), "callee_int");
-                LLVMTypeRef fnType = makeFnType(argCount);
-                LLVMTypeRef fnPtrType = LLVMPointerType(fnType, 0);
-                LLVMValueRef calleeFnPtr = LLVMBuildIntToPtr(ctx->builder,
-                    calleeAsInt, fnPtrType, "callee_ptr");
+                LLVMValueRef result;
 
-                // Emit the call and push the result
-                LLVMValueRef result = LLVMBuildCall2(ctx->builder, fnType,
-                    calleeFnPtr, args, argCount, "call_result");
+                if (ctx->pendingNative) {
+                    // Native function: call the pre-declared LLVM extern directly
+                    NativeEntry* nat = ctx->pendingNative;
+                    ctx->pendingNative = NULL;
+                    result = LLVMBuildCall2(ctx->builder, nat->type,
+                                           nat->fn, args, argCount, "native_result");
+                } else {
+                    // User-defined function: callee is a fn-ptr stored as double
+                    LLVMValueRef calleeAsInt = LLVMBuildBitCast(ctx->builder,
+                        calleeVal, LLVMInt64Type(), "callee_int");
+                    LLVMTypeRef fnType = makeFnType(argCount);
+                    LLVMTypeRef fnPtrType = LLVMPointerType(fnType, 0);
+                    LLVMValueRef calleeFnPtr = LLVMBuildIntToPtr(ctx->builder,
+                        calleeAsInt, fnPtrType, "callee_ptr");
+                    result = LLVMBuildCall2(ctx->builder, fnType,
+                        calleeFnPtr, args, argCount, "call_result");
+                }
+
                 free(args);
                 stackPush(&ctx->stack, result);
                 i += 2; break;
@@ -519,24 +559,26 @@ static void preRegisterFunctions(Chunk* chunk, FuncRegistry* reg, LLVMModuleRef 
 static bool compileFunctionBody(ObjFunction* objFn, FuncEntry* entry,
                                 LLVMModuleRef mod, LLVMBuilderRef builder,
                                 LLVMValueRef printf_fn, LLVMValueRef fmt_double,
-                                GlobalMap* globals, FuncRegistry* funcs) {
+                                GlobalMap* globals, FuncRegistry* funcs,
+                                NativeRegistry* natives) {
     LLVMBasicBlockRef entryBlock = LLVMAppendBasicBlock(entry->llvmFn, "entry");
     LLVMPositionBuilderAtEnd(builder, entryBlock);
 
     TranslateCtx ctx;
-    ctx.builder    = builder;
-    ctx.fn         = entry->llvmFn;
-    ctx.module     = mod;
-    ctx.printf_fn  = printf_fn;
-    ctx.fmt_double = fmt_double;
-    ctx.globals    = globals;
-    ctx.funcs      = funcs;
-    ctx.isTopLevel = false;
+    ctx.builder       = builder;
+    ctx.fn            = entry->llvmFn;
+    ctx.module        = mod;
+    ctx.printf_fn     = printf_fn;
+    ctx.fmt_double    = fmt_double;
+    ctx.globals       = globals;
+    ctx.funcs         = funcs;
+    ctx.natives       = natives;
+    ctx.pendingNative = NULL;
+    ctx.isTopLevel    = false;
     stackInit(&ctx.stack);
     localsInit(&ctx.locals);
 
-    // Map function parameters into local slots.
-    // In A#'s VM, slot 0 is the function itself; args are in slots 1..arity.
+    // Map parameters into local alloca slots (slot 0 = function itself, skip it)
     for (int p = 0; p < objFn->arity; p++) {
         LLVMValueRef param = LLVMGetParam(entry->llvmFn, p);
         LLVMValueRef alloca = ensureLocal(&ctx.locals, p + 1, builder, entry->llvmFn);
@@ -571,14 +613,23 @@ LLVMBackendResult runWithLLVM(const char* source) {
     // Declare native math functions (from C stdlib — JIT finds them at runtime)
     LLVMTypeRef d_d[]  = { LLVMDoubleType() };
     LLVMTypeRef d_dd[] = { LLVMDoubleType(), LLVMDoubleType() };
-    LLVMValueRef sqrt_fn  = LLVMAddFunction(module, "sqrt",  LLVMFunctionType(LLVMDoubleType(), d_d,  1, 0));
-    LLVMValueRef floor_fn = LLVMAddFunction(module, "floor", LLVMFunctionType(LLVMDoubleType(), d_d,  1, 0));
-    LLVMValueRef pow_fn   = LLVMAddFunction(module, "pow",   LLVMFunctionType(LLVMDoubleType(), d_dd, 2, 0));
-    (void)sqrt_fn; (void)floor_fn; (void)pow_fn; // registered; used if called
+    LLVMTypeRef sqrt_type  = LLVMFunctionType(LLVMDoubleType(), d_d,  1, 0);
+    LLVMTypeRef floor_type = LLVMFunctionType(LLVMDoubleType(), d_d,  1, 0);
+    LLVMTypeRef pow_type   = LLVMFunctionType(LLVMDoubleType(), d_dd, 2, 0);
+    LLVMValueRef sqrt_fn  = LLVMAddFunction(module, "sqrt",  sqrt_type);
+    LLVMValueRef floor_fn = LLVMAddFunction(module, "floor", floor_type);
+    LLVMValueRef pow_fn   = LLVMAddFunction(module, "pow",   pow_type);
+
+    // Build native registry — maps A# native names to LLVM function refs
+    NativeRegistry natives;
+    nativesInit(&natives);
+    registerNative(&natives, "sqrt",  sqrt_fn,  sqrt_type);
+    registerNative(&natives, "floor", floor_fn, floor_type);
+    registerNative(&natives, "pow",   pow_fn,   pow_type);
 
     // Shared state
-    GlobalMap globals;   globalsInit(&globals);
-    FuncRegistry funcs;  funcRegistryInit(&funcs);
+    GlobalMap globals;  globalsInit(&globals);
+    FuncRegistry funcs; funcRegistryInit(&funcs);
 
     // Pre-register all user-defined functions found in constants
     preRegisterFunctions(&topLevel->chunk, &funcs, module);
@@ -601,7 +652,7 @@ LLVMBackendResult runWithLLVM(const char* source) {
     for (int f = 0; f < funcs.count; f++) {
         FuncEntry* entry = &funcs.entries[f];
         if (!compileFunctionBody(entry->objFn, entry, module, builder,
-                                 printf_fn, fmt_double, &globals, &funcs)) {
+                                 printf_fn, fmt_double, &globals, &funcs, &natives)) {
             LLVMDisposeBuilder(builder);
             LLVMDisposeModule(module);
             freeVM();
@@ -613,14 +664,16 @@ LLVMBackendResult runWithLLVM(const char* source) {
     LLVMPositionBuilderAtEnd(builder, mainEntry);
 
     TranslateCtx mainCtx;
-    mainCtx.builder    = builder;
-    mainCtx.fn         = mainFn;
-    mainCtx.module     = module;
-    mainCtx.printf_fn  = printf_fn;
-    mainCtx.fmt_double = fmt_double;
-    mainCtx.globals    = &globals;
-    mainCtx.funcs      = &funcs;
-    mainCtx.isTopLevel = true;
+    mainCtx.builder       = builder;
+    mainCtx.fn            = mainFn;
+    mainCtx.module        = module;
+    mainCtx.printf_fn     = printf_fn;
+    mainCtx.fmt_double    = fmt_double;
+    mainCtx.globals       = &globals;
+    mainCtx.funcs         = &funcs;
+    mainCtx.natives       = &natives;
+    mainCtx.pendingNative = NULL;
+    mainCtx.isTopLevel    = true;
     stackInit(&mainCtx.stack);
     localsInit(&mainCtx.locals);
 
