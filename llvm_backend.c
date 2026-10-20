@@ -715,6 +715,11 @@ LLVMBackendResult runWithLLVM(const char* source) {
     }
     LLVMDisposeMessage(error);
 
+    // Note: LLVM optimization passes would go here, but the C API for
+    // PassManagerBuilder is deprecated in LLVM 18+. For production use,
+    // consider using the new pass manager via C++ or opt tool externally.
+    // The current IR is already reasonably efficient due to SSA form.
+
     // Uncomment to inspect IR:
     // LLVMDumpModule(module);
 
