@@ -452,6 +452,17 @@ static bool translateChunk(TranslateCtx* ctx, Chunk* chunk) {
                     ctx->pendingNative = NULL;
                     result = LLVMBuildCall2(ctx->builder, nat->type,
                                            nat->fn, args, argCount, "native_result");
+                    
+                    // Special handling for clock(): returns int64, needs conversion to seconds
+                    if (strcmp(nat->name, "clock") == 0) {
+                        // Convert clock_t (int64) to double
+                        LLVMValueRef ticks = result;
+                        LLVMValueRef ticksDouble = LLVMBuildSIToFP(ctx->builder,
+                            ticks, LLVMDoubleType(), "ticks_double");
+                        // Divide by CLOCKS_PER_SEC (typically 1000000 on Linux)
+                        LLVMValueRef divisor = LLVMConstReal(LLVMDoubleType(), 1000000.0);
+                        result = LLVMBuildFDiv(ctx->builder, ticksDouble, divisor, "seconds");
+                    }
                 } else {
                     // User-defined function: callee is a fn-ptr stored as double
                     LLVMValueRef calleeAsInt = LLVMBuildBitCast(ctx->builder,
@@ -620,12 +631,20 @@ LLVMBackendResult runWithLLVM(const char* source) {
     LLVMValueRef floor_fn = LLVMAddFunction(module, "floor", floor_type);
     LLVMValueRef pow_fn   = LLVMAddFunction(module, "pow",   pow_type);
 
+    // Declare clock() — returns clock_t (integer) but we'll cast to double
+    // In A# VM: clockNative() calls C's clock() and divides by CLOCKS_PER_SEC
+    // In LLVM: we'll create a wrapper that does the same
+    // For simplicity, declare the C clock() directly and handle division in IR
+    LLVMTypeRef clock_type = LLVMFunctionType(LLVMInt64Type(), NULL, 0, 0);
+    LLVMValueRef clock_fn  = LLVMAddFunction(module, "clock", clock_type);
+
     // Build native registry — maps A# native names to LLVM function refs
     NativeRegistry natives;
     nativesInit(&natives);
     registerNative(&natives, "sqrt",  sqrt_fn,  sqrt_type);
     registerNative(&natives, "floor", floor_fn, floor_type);
     registerNative(&natives, "pow",   pow_fn,   pow_type);
+    registerNative(&natives, "clock", clock_fn, clock_type);
 
     // Shared state
     GlobalMap globals;  globalsInit(&globals);
